@@ -12,6 +12,17 @@ my $serverauth = do {
   (<$fh> =~ /(.*)/)[0];
 };
 
+my @common_headers = (
+  'Strict-Transport-Security' => 'max-age=31536000',
+  'Server' => 'paste.sh/' . do { chomp(my $t = `git describe --always`); $t });
+
+
+sub _error {
+  my($message, $code) = @_;
+  return [ $code,
+    [ 'Content-Type' => 'text/plain', @common_headers ],
+    [ $message . "\n" ] ];
+}
 
 sub dispatch_request {
   my($self, $env) = @_;
@@ -24,18 +35,20 @@ sub dispatch_request {
   sub (GET + /cryptojs/*.*) {
     my($self, $file) = @_;
     if($file =~ /[^a-z0-9-.]/ || !-f "crypto-js/src/$file") {
-      return [ 404, [ 'Content-type', 'text/plain' ], [ 'Not found' ] ]
+      return _error('Not found', 404);
     }
     open my $fh, "<", "crypto-js/src/$file" or return;
-    return [ 200, [ 'Content-type', 'text/javascript' ], [ <$fh> ] ]
+    return [ 200,
+      [ 'Content-type', 'text/javascript', @common_headers ],
+      [ <$fh> ] ]
   },
   sub (GET + /new + ?id=) {
     my($self, $id) = @_;
     if($data{$id}) {
-      return [ 409, [ 'Content-type', 'text/plain' ], [ 'Already exists' ] ]
+      return _error('Already exists', 409);
     }
 
-    return [ 200, [ 'Content-type', 'text/plain' ],
+    return [ 200, [ 'Content-type', 'text/plain', @common_headers ],
       [ map chr 32 + rand 96, 1 .. 8 ] ];
   },
   sub (GET + /**) {
@@ -46,7 +59,7 @@ sub dispatch_request {
     my $data = exists $data{$path} ? eval { decode_json $data{$path} } : undef;
 
     if(!$data) {
-      return [ 404, [ 'Content-type', 'text/plain' ], [ 'Not found' ] ];
+      return _error('Not found', 404);
     }
 
     open my $fh, "<", "paste.html" or die $!;
@@ -59,7 +72,10 @@ sub dispatch_request {
       ($cookie && $data->{cookie} && $cookie eq $data->{cookie})
       || $path eq 'index'/e;
 
-    return [ 200, ['Content-type' => 'text/html; charset=UTF-8'], [ $template ] ];
+    return [ 200, [
+        'Content-type' => 'text/html; charset=UTF-8',
+        @common_headers
+      ], [ $template ] ];
   },
   sub (PUT + /**) {
     my($self, $path) = @_;
@@ -70,30 +86,28 @@ sub dispatch_request {
     my $sauth = $req->header('X-Server-Auth');
     if($sauth) {
       if($sauth ne $serverauth) {
-        return [ 403, [ 'Content-type', 'text/plain' ], [ "Invalid auth\n" ] ]
+        return _error("Invalid auth", 403);
       }
       # Authed clients can write anything (for updating about, etc).
     } elsif(length($path) < 8 || length($path) > 12 || $path =~ m{[^A-Za-z0-9_-]}) {
-      return [ 400, [ 'Content-type', 'text/plain' ], [ "Invalid path\n" ] ]
+      return _error("Invalid path", 400);
     }
 
     if(!$sauth && exists $data{$path}) {
       if(my $cur = eval { decode_json $data{$path} }) {
         if(!$cur->{cookie} || $cur->{cookie} ne $cookie) {
-          return [ 403, [ 'Content-type', 'text/plain' ], [ "Invalid cookie\n" ] ]
+          return _error("Invalid cookie", 403);
         }
       }
     }
 
     $content =~ s/[\r\n]//g;
     if($content =~ m{[^A-Za-z0-9/+=]}) {
-      return [ 403, [ 'Content-type', 'text/plain' ],
-        [ "Content contains non-base64\n" ] ];
+      return _error("Content contains non-base64", 403);
     }
 
     if(length $content > (640 * 1024)) {
-      return [ 403, [ 'Content-type', 'text/plain' ],
-        [ "Content too large\n" ] ];
+      return _error("Content too large", 413);
     }
 
     my $serverkey = $req->header('X-Server-Key');
@@ -105,10 +119,12 @@ sub dispatch_request {
       serverkey => $serverkey,
     };
 
-    [ 200, [ 'Content-type', 'text/plain' ], [ "Saved " . length($content) . " bytes.\n" ] ]
+    [ 200,
+      [ 'Content-type', 'text/plain', @common_headers ],
+      [ "Saved " . length($content) . " bytes.\n" ] ]
   },
   sub () {
-    [ 404, [ 'Content-type', 'text/plain' ], [ 'Not found' ] ]
+    _error("Not found", 404);
   }
 }
 
