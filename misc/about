@@ -1,0 +1,75 @@
+                                      |               |     
+                     __ \   _` |  __| __|  _ \    __| __ \  
+                     |   | (   |\__ \ |    __/  \__ \ | | | 
+                     .__/ \__,_|____/\__|\___|_)____/_| |_| 
+                    _|                                      
+
+
+What?
+=====
+
+This is a simple paste site. It doesn't do syntax highlighting, or get in your
+way. It gives you a textarea and you type in it.
+
+However behind the scenes it is encrypting your data. It uses a recently
+introduced browser feature (crypto.getRandomValues) to do this securely.
+
+This does mean you need a modern browser. It seems to work best in Chrome,
+Firefox also works well. Reading pastes should work in most browsers with
+JavaScript.
+
+Why?
+====
+
+OTR works well for keeping chat secure, but sharing larger amounts of text or
+code over chat is not ideal. I wanted a simple way to share things with a low
+barrier to entry but that is still relatively[1] secure.
+
+I won't claim to be an expert on cryptography but I do think while JavaScript in
+a browser is not a perfect environment it is not entirely useless (as claimed in
+[2], although this is now slightly outdated).
+
+How?
+====
+
+JavaScript running in your browser encrypts your data using AES-256 (via the
+CryptoJS[3] library). The key is generated on the client side and the server is
+never able to decrypt the data, this works because the URL fragment (the part of
+the URL after the '#' symbol) is never sent to the server.
+
+Beware that depending on how you share the URL with others the fragment part may
+be stored by other systems.
+
+You can edit the paste for some time after pasting; this uses a session cookie
+in your browser. (Yes, if you deny cookies this site won't work, sorry[4]).
+
+There is a limit of 640K of data once encrypted (should be enough for anybody)
+per paste, go and use mega[5] if you want a file sharing site.
+
+Where?
+======
+
+Here, https://paste.sh
+
+Alternatively if you want to see the code or wish to host your own version, the
+source code is available at https://github.com/dgl/paste.sh under the WTFPL:
+https://dgl.cx/licence
+
+There's also a command line client there; the comments in it are worth reading
+if you care about the encryption scheme used (being compatible with the OpenSSL
+command line tool limits the key derivation slightly).
+
+Who?
+====
+
+David Leadbeater (@davidgl) wrote this. 
+
+-- 
+[1]: It's not on the level of e.g. https://crypto.cat/, especially due to having
+     to trust that the server is serving you the right JavaScript. Although:
+     https://blog.crypto.cat/2013/07/new-critical-vulnerability-in-cryptocat-details/
+[2]: http://www.matasano.com/articles/javascript-cryptography/
+[3]: https://code.google.com/p/crypto-js/
+[4]: The command line client will work, you just can't delete or change anything
+     if you use it.
+[5]: https://mega.co.nz

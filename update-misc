@@ -1,0 +1,37 @@
+#!/bin/bash
+HOST=https://paste.sh
+
+
+die() {
+  echo "${1}" >&2
+  exit ${2:-1}
+}
+
+# Write data to a temp file and open it on given fd to avoid passing on command
+# line
+tmpfd() {
+  tmp="$(mktemp)"
+  echo "$1" > "$tmp" || die "Unable to write to temp. file."
+  eval "exec $2<$tmp"
+  rm -f $tmp || die "Unable to remove temp. file. Aborting to avoid key leak"
+}
+
+for file in misc/*; do
+  id=$(basename $file)
+  if [[ $id = index ]]; then
+    serverkey=
+  else
+    serverkey=public
+  fi
+  clientkey=
+
+  tmpfd "${id}${serverkey}${clientkey}${HOST}" 3
+  tmpfile=$(mktemp)
+  trap 'rm -f $tmpfile' EXIT
+  < $file openssl enc -aes-256-cbc -md sha512 -pass fd:3 -base64 > $tmpfile
+  # Get rid of the temp. file once server supports HTTP/1.1 chunked uploads
+  curl -sS -0 -H "X-Server-Auth: $(<serverauth)" -H "X-Server-Key: ${serverkey}" \
+    -T $tmpfile "http://localhost:5000/${id}" || die "Failed pasting data"
+
+  echo "$HOST/${id}"
+done

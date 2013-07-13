@@ -1,0 +1,243 @@
+<script src="/cryptojs/core.js"></script>
+<script src="/cryptojs/enc-base64.js"></script>
+<script src="/cryptojs/evpkdf.js"></script>
+<script src="/cryptojs/cipher-core.js"></script>
+<script src="/cryptojs/aes.js"></script>
+<script src="/cryptojs/x64-core.js"></script>
+<script src="/cryptojs/sha512.js"></script>
+
+<title>paste.sh &middot; encrypted pastebin</title>
+<script>
+
+var content = '{{content}}';
+var editable = '{{editable}}';
+var serverkey = {{serverkey}};
+
+var cmd = false;
+
+var paste = {
+  shouldSave: false,
+};
+
+onload = function() {
+  var textarea = document.getElementById('x');
+  // Ensure the element remains focused (little hacky, but easier than
+  // implementing selection blocking, key capture, etc).
+  textarea.onblur = function() {
+    if(cmd) return;
+    var x = this;
+    setTimeout(function() { x.focus() }, 1);
+  }
+
+  if(!serverkey) {
+    textarea.select();
+  } else {
+    try {
+      textarea.value = decrypt(getKey(), content);
+    } catch(e) {
+      textarea.value = "Decryption failed (" + e + ")";
+      editable = false;
+    }
+    if(!textarea.value && content) {
+      textarea.value = "Decryption failed";
+      editable = false;
+    }
+    textarea.focus();
+    // Firefox likes to scroll to the end, tell it not to
+    textarea.selectionStart = 0;
+    textarea.selectionEnd = 0;
+  }
+
+  if(!editable) {
+    textarea.setAttribute('readonly', true);
+    textarea.ondblclick = function() {
+      if(confirm("You can't edit this paste, would you like to create a copy? You'll need to share the new URL.")) {
+        generate();
+        textarea.removeAttribute('readonly');
+        textarea.ondblclick = null;
+        editable = true;
+      }
+    }
+  }
+
+  // Note the content changed and we should save this.
+  textarea.onchange = shouldSave;
+  textarea.oninput = shouldSave;
+
+  // Make tab key work, keep shift+tab as a method to get to the URL bar.
+  var seen_esc = false;
+  textarea.onkeydown = function(e) {
+    if(seen_esc && e.shiftKey && e.keyCode == 186 /* : */) {
+      e.preventDefault();
+      return;
+      // TODO: finish Vim command support.
+      // :set spell/nospell; number maybe; 
+      // :w[rite], :e[dit], :raw.
+      document.getElementById('command').style.display = 'block';
+      document.getElementById('cmd').value = ':';
+      setTimeout(function() { document.getElementById('cmd').focus() }, 1);
+      sene_esc = false;
+      cmd = true;
+    }
+    if(e.keyCode == 27 && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      seen_esc = true;
+      e.preventDefault();
+      return;
+    } else if(e.keyCode >= 32) {
+      seen_esc = false;
+    }
+
+    if(!editable) return;
+    if(!e.ctrlKey && !e.altKey && !e.metaKey) {
+      // XXX: alt gr, etc handling.
+      shouldSave.call(this);
+    }
+    if(e.keyCode == 9 && !e.shiftKey && !e.ctrlKey) {
+      e.preventDefault();
+      var s = this.selectionStart;
+      this.value = this.value.substring(0, this.selectionStart) + "\t" +
+        this.value.substring(this.selectionEnd);
+      this.selectionEnd = s + 1; 
+    }
+  }
+
+  // If the document loses focus save right away (the idea being this is likely
+  // someone selecting the URL to share).
+  window.onblur = maybeSave;
+
+  window.onbeforeunload = function() {
+    if(paste.shouldSave) {
+      maybeSave();
+      return "Data is still being saved. You may lose data if you leave the page now.";
+    }
+    return null;
+  }
+}
+
+function getKey() {
+  var hash = location.hash.substr(1);
+  // Allow empty keys on /about, etc. but not on real pastes
+  if(hash.length < 18 && location.pathname.length >= 8) {
+    throw "Invalid hash, ensure you have the full URL, including the full '#xxxx' part at the end";
+  }
+  return location.pathname.substr(1) + serverkey + hash + 'https://paste.sh';
+}
+
+function maybeSave() {
+  if(paste.shouldSave) {
+    document.getElementById('status').textContent = 'Saving...';
+    try {
+      serverSave(location.pathname, encrypt(getKey()));
+    } catch(e) {
+      alert(e);
+    }
+  }
+}
+
+function serverSave(path, content) {
+  var xhr = new XMLHttpRequest;
+  xhr.open("PUT", path, true);
+  xhr.setRequestHeader('X-Server-Key', serverkey);
+  xhr.onreadystatechange = function() {
+    if(this.readyState == this.DONE) {
+      // XXX: check status
+      paste.shouldSave = false;
+      in_progress = false;
+      document.getElementById('status').textContent = this.responseText;
+    }
+  }
+  in_progress = true;
+  xhr.send(content);
+}
+
+function getServerKey() {
+  var xhr = new XMLHttpRequest;
+  xhr.open("GET", '/new?id=' + location.pathname.substr(1), true);
+  xhr.onreadystatechange = function() {
+    if(this.readyState == this.DONE) {
+      serverkey = this.responseText;
+    }
+  }
+  xhr.send();
+}
+
+
+// TODO: Not hooked up yet
+function updateCursorPos() {
+  var lines = this.value.substring(0, this.selectionStart).split("\n");
+  var line = lines.length;
+  var col = lines[lines.length - 1].length;
+  return "" + line + "," + col;
+}
+
+var oldwarning = false;
+
+function shouldSave() {
+  if(!editable) return;
+  if(!('crypto' in window) || !('getRandomValues' in window.crypto)) {
+    if(!oldwarning) {
+      alert('This browser does not have crypto.getRandomValues. To securely create pastes please upgrade to a recent version of Chrome or Firefox');
+      oldwarning = true;
+    }
+    document.getElementById('x').disabled = true;
+    return;
+  }
+  if(location.pathname == '/') {
+    generate();
+  }
+  paste.shouldSave = true;
+  document.getElementById('status').textContent = 'Unsaved';
+}
+
+
+function generate() {
+  if(!document.cookie.match(/pasteauth=/)) {
+    document.cookie = 'pasteauth=' + CryptoJS.lib.WordArray.random(18).toString(
+      CryptoJS.enc.Base64).replace(/[\+\/]/g, function(x) { return x == '+' ? '-' : '_'});
+  }
+  var r = CryptoJS.lib.WordArray.random(6).toString(
+      CryptoJS.enc.Base64).replace(/[\+\/]/g, function(x) { return x == '+' ? '-' : '_'});
+  var clientkey = CryptoJS.lib.WordArray.random(18).toString(
+      CryptoJS.enc.Base64).replace(/[\+\/]/g, function(x) { return x == '+' ? '-' : '_'});
+  history.replaceState(null, '', '/' + r + '#' + clientkey);
+  getServerKey(); // XXX: racy
+}
+
+function encrypt(password) {
+  message = document.getElementById('x').value;
+  // This matches "openssl enc -aes-256-cbc -md sha512"
+  var e = CryptoJS.lib.PasswordBasedCipher.encrypt(
+      CryptoJS.algo.AES, message, password,
+      { hasher: CryptoJS.algo.SHA512 });
+  return e.toString();
+}
+
+function decrypt(password, message) {
+  var e = CryptoJS.lib.PasswordBasedCipher.decrypt(
+      CryptoJS.algo.AES, message, password,
+      { hasher: CryptoJS.algo.SHA512 });
+  return e.toString(CryptoJS.enc.Utf8);
+}
+
+function rawme(l) {
+  l.href = 'data:text/plain;base64,' + CryptoJS.enc.Utf8.parse(
+      document.getElementById('x').value).toString(CryptoJS.enc.Base64);
+}
+</script>
+
+<style>
+  body { margin: 0; padding: 0; }
+  #x { position: absolute; top: 0; left: 0; right: 0; width: 100%; border: 0; padding: 0.5em; height: 97%; }
+  textarea:focus, textarea:active, textarea:disabled { background: white; color: black; border: 0; outline: none; }
+  #command { display: none; position: absolute; float: left; bottom:0; left: 0; padding-bottom: 0.25em; }
+  #command input { border: 0; outline: none; }
+  #controls { position: absolute; clear: both; bottom: 0; padding-bottom: 0.25em; right: 0.5em; color: #aaa; }
+  i { color: #aaa; }
+</style>
+
+<!-- TODO:
+clicking on raw has callback if saving is in progress.
+-->
+<textarea id=x>This is an encrypted paste site. Simply type or paste code here and share the URL.</textarea>
+<div id="command"><input type="text" id="cmd" value=":"></div>
+<div id="controls"><span id="status"></span> &nbsp;&nbsp; <a href="#raw" oncontextmenu='rawme(this)' onclick='alert("This will show the unencrypted data in the location bar (base64 encoded). Only use this for saving locally, do not share the data: URL."); rawme(this)'>raw</a> &bull; <a href="/">new</a> &bull; <a href="/about">about</a></div>
