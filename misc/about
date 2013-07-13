@@ -46,6 +46,10 @@ in your browser. (Yes, if you deny cookies this site won't work, sorry[4]).
 There is a limit of 640K of data once encrypted (should be enough for anybody)
 per paste, go and use mega[5] if you want a file sharing site.
 
+The server side is fairly simple. I wrote it using Perl, using Web::Simple for
+the HTTP side and Tie::LevelDB for the key/value store with haproxy in front of
+it all doing the SSL.
+
 Where?
 ======
 
