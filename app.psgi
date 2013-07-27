@@ -51,6 +51,24 @@ sub dispatch_request {
     return [ 200, [ 'Content-type', 'text/plain', @common_headers ],
       [ map chr 32 + rand 96, 1 .. 8 ] ];
   },
+  sub (GET + /* + .txt) {
+    my($self, $path) = @_;
+    my $data = exists $data{$path} ? eval { decode_json $data{$path} } : undef;
+
+    if(!$data) {
+      return _error('Not found', 404);
+    }
+
+    my $content = $data->{content};
+    $content =~ s/\G(.{65})/$1\n/g;
+
+    return [ 200, [
+        'Content-type' => 'text/plain',
+        @common_headers
+      ], [
+        $data->{serverkey} . "\n" . $content . "\n"
+      ] ];
+  },
   sub (GET + /**) {
     my($self, $path) = @_;
     my $req = Plack::Request->new($env);
