@@ -19,6 +19,7 @@
 #     (You need to quote or escape the URL due to the #)
 
 HOST=https://paste.sh
+TMPTMPL=paste.XXXXXXXX
 
 
 die() {
@@ -34,7 +35,7 @@ randbase64() {
 # Write data to a temp file and open it on given fd to avoid passing on command
 # line
 tmpfd() {
-  tmp="$(mktemp)"
+  tmp="$(mktemp -t $TMPTMPL)"
   echo "$1" > "$tmp" || die "Unable to write to temp. file."
   eval "exec $2<$tmp"
   rm -f $tmp || die "Unable to remove temp. file. Aborting to avoid key leak"
@@ -62,7 +63,7 @@ encrypt() {
   # reasonable trade off; 144 bits)
   clientkey="$(randbase64 18)"
 
-  file=$(mktemp)
+  file=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${file}"' EXIT
   # It would be nice to use PBKDF2 or just more iterations of the key derivation
   # function, but the OpenSSL command line tool can't do that.
@@ -82,7 +83,7 @@ decrypt() {
   url=$(cut -d# -f1 <<< "$1")
   id=$(cut -d/ -f4 <<< "${url}")
   clientkey=$(cut -d# -f2 <<< "$1")
-  tmpfile=$(mktemp)
+  tmpfile=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${tmpfile}"' EXIT
   curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
