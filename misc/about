@@ -18,6 +18,14 @@ This does mean you need a modern browser. It seems to work best in Chrome,
 Firefox also works well. Reading pastes should work in most browsers with
 JavaScript.
 
+However if you didn't guess from the name there is also a shell script
+"paste.sh"; see https://paste.sh/client or run the following commands to
+install it:
+
+  cd ~/bin
+  curl -O https://raw.github.com/dgl/paste.sh/master/paste.sh
+  chmod +x paste.sh
+
 Why?
 ====
 

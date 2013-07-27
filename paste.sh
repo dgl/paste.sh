@@ -1,6 +1,11 @@
 #!/bin/bash
 # Client for paste.sh - https://paste.sh/client
 #
+# Install:
+#   cd ~/bin
+#   curl -O https://raw.github.com/dgl/paste.sh/master/paste.sh
+#   chmod +x paste.sh
+#
 # Usage:
 #   Send clipboard:
 #     $ paste.sh
