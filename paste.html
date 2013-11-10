@@ -127,6 +127,8 @@ function maybeSave() {
   if(paste.shouldSave) {
     document.getElementById('status').textContent = 'Saving...';
     try {
+      // This keeps the key unique per save
+      serverkey = serverkey.substr(0, 8) + randomStr(6);
       serverSave(location.pathname, encrypt(getKey()));
     } catch(e) {
       alert(e);
@@ -189,16 +191,17 @@ function shouldSave() {
   document.getElementById('status').textContent = 'Unsaved';
 }
 
+function randomStr(n) {
+  return  CryptoJS.lib.WordArray.random(n).toString(
+      CryptoJS.enc.Base64).replace(/[\+\/]/g, function(x) { return x == '+' ? '-' : '_'});
+}
 
 function generate() {
   if(!document.cookie.match(/pasteauth=/)) {
-    document.cookie = 'pasteauth=' + CryptoJS.lib.WordArray.random(18).toString(
-      CryptoJS.enc.Base64).replace(/[\+\/]/g, function(x) { return x == '+' ? '-' : '_'});
+    document.cookie = 'pasteauth=' + randomStr(18);
   }
-  var r = CryptoJS.lib.WordArray.random(6).toString(
-      CryptoJS.enc.Base64).replace(/[\+\/]/g, function(x) { return x == '+' ? '-' : '_'});
-  var clientkey = CryptoJS.lib.WordArray.random(18).toString(
-      CryptoJS.enc.Base64).replace(/[\+\/]/g, function(x) { return x == '+' ? '-' : '_'});
+  var r = randomStr(6);
+  var clientkey = randomStr(18);
   history.replaceState(null, '', '/' + r + '#' + clientkey);
   getServerKey(); // XXX: racy
 }
