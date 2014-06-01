@@ -117,7 +117,8 @@ onload = function() {
 function getKey() {
   var hash = location.hash.substr(1);
   // Allow empty keys on /about, etc. but not on real pastes
-  if(hash.length < 18 && location.pathname.length >= 8) {
+  if(hash.length < 18 && (location.pathname.length == 8 ||
+        (location.pathname.length > 8 && location.pathname[1] != 'p'))) {
     throw "Invalid hash, ensure you have the full URL, including the full '#xxxx' part at the end";
   }
   return location.pathname.substr(1) + serverkey + hash + 'https://paste.sh';

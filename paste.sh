@@ -14,6 +14,10 @@
 #   File:
 #     $ paste.sh some-file
 #
+#   Public paste (shorter URL, as no encryption, limited to command line client
+#   for now):
+#     $ paste.sh -p [same usage as above]
+#
 #   Print paste:
 #     $ paste.sh 'https://paste.sh/xxxxx#xxxx'
 #     (You need to quote or escape the URL due to the #)
@@ -62,6 +66,10 @@ encrypt() {
   # Generate client key (nothing stopping you changing this, this seemed like a
   # reasonable trade off; 144 bits)
   clientkey="$(randbase64 18)"
+  if [[ $public == 1 ]]; then
+    clientkey=
+    id="p${id}"
+  fi
 
   file=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${file}"' EXIT
@@ -76,13 +84,18 @@ encrypt() {
   curl -sS -0 -H "X-Server-Key: ${serverkey}" -T "${file}" "$HOST/${id}" \
     || die "Failed pasting data"
 
-  echo "$HOST/${id}#${clientkey}"
+  echo -n "$HOST/${id}"
+  if [[ -n $clientkey ]]; then
+    echo "#${clientkey}"
+  else
+    echo
+  fi
 }
 
 decrypt() {
   url=$(cut -d# -f1 <<< "$1")
   id=$(cut -d/ -f4 <<< "${url}")
-  clientkey=$(cut -d# -f2 <<< "$1")
+  clientkey=$(cut -sd# -f2 <<< "$1")
   tmpfile=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${tmpfile}"' EXIT
   curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
@@ -103,25 +116,33 @@ if [ -z "$TMPDIR" -a -w /dev/shm ]; then
 fi
 
 # What are we doing?
-if [[ $# -gt 0 ]]; then
-  if [[ ${1:0:8} = https:// ]]; then
-    decrypt "$1"
-  elif [ -e "${1}" -o "${1}" == "-" ]; then
-    # File (also handle "-", via cat)
-    if [ "${1}" != "-" -a "$(stat -c %s "${1}")" -gt $[640 * 1024] ]; then
-      die "${1}: File too big"
+public=0
+main() {
+  if [[ $# -gt 0 ]]; then
+    if [[ ${1:0:8} = https:// ]]; then
+      decrypt "$1"
+    elif [ -e "${1}" -o "${1}" == "-" ]; then
+      # File (also handle "-", via cat)
+      if [ "${1}" != "-" -a "$(stat -c %s "${1}")" -gt $[640 * 1024] ]; then
+        die "${1}: File too big"
+      fi
+      encrypt "cat --" "$1"
+    elif [[ ${1} == "-p" ]]; then
+      shift
+      public=1
+      main "$@"
+    else
+      echo "$1: No such file and not a https URL"
+      exit 1
     fi
-    encrypt "cat --" "$1"
-  else
-    echo "$1: No such file and not a https URL"
-    exit 1
+  elif ! [ -t 0 ]; then  # Something piped to us, read it
+    encrypt cat "-"
+  else  # No input, read clipboard
+    if [[ $(uname) = Darwin ]]; then
+      encrypt pbpaste
+    else
+      encrypt xsel "-o"
+    fi
   fi
-elif ! [ -t 0 ]; then  # Something piped to us, read it
-  encrypt cat "-"
-else  # No input, read clipboard
-  if [[ $(uname) = Darwin ]]; then
-    encrypt pbpaste
-  else
-    encrypt xsel "-o"
-  fi
-fi
+}
+main "$@"
