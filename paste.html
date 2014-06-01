@@ -244,6 +244,24 @@ function rawme(l) {
 <!-- TODO:
 clicking on raw has callback if saving is in progress.
 -->
+<noscript>
+  This site requires JavaScript. However there is a command line client:
+  <br>
+  <pre>
+    cd ~/bin
+    curl -O https://raw.github.com/dgl/paste.sh/master/paste.sh
+    chmod +x paste.sh
+  </pre>
+  Then use either:
+  <pre>
+    $ paste.sh some-file
+  </pre>
+  to upload text, or:
+  <pre>
+    $ paste.sh https://paste.sh/...
+  </pre>
+  to view text. See <a href="https://github.com/dgl/paste.sh">github</a> for more.
+</noscript>
 <textarea id=x>This is an encrypted paste site. Simply type or paste code here and share the URL.</textarea>
 <div id="command"><input type="text" id="cmd" value=":"></div>
 <div id="controls"><span id="status"></span> &nbsp;&nbsp; <a href="#raw" oncontextmenu='rawme(this)' onclick='alert("This will show the unencrypted data in the location bar (base64 encoded). Only use this for saving locally, do not share the data: URL."); rawme(this)'>raw</a> &bull; <a href="/">new</a> &bull; <a href="/about">about</a></div>
