@@ -40,7 +40,14 @@ sub dispatch_request {
     open my $fh, "<", "crypto-js/src/$file" or return;
     return [ 200,
       [ 'Content-type', 'text/javascript', @common_headers ],
-      [ <$fh> ] ]
+      [ <$fh> ] ];
+  },
+  sub (GET + /favicon.ico) {
+    my($self) = @_;
+    open my $fh, "<", "favicon.ico" or return;
+    return [ 200,
+      [ 'Content-type', 'image/x-icon', @common_headers ],
+      [ <$fh> ] ];
   },
   sub (GET + /new + ?id=) {
     my($self, $id) = @_;
