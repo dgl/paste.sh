@@ -32,10 +32,7 @@ onload = function() {
   textarea.onblur = function() {
     if(cmd) {
       maybeSave();
-      return;
     }
-    var x = this;
-    setTimeout(function() { x.focus() }, 1);
   }
   textarea.onfocus = function() {
     cmd = false;
@@ -132,6 +129,11 @@ onload = function() {
     } else if (e.keyCode == 9) {
       cmd = true;
     }
+  }
+  // Ensure typing and ctrl-a works even if the textarea wasn't focused
+  window.onkeydown = function(e) {
+    if (e.ctrlKey || e.charCode >= 32)
+      textarea.focus();
   }
 
   // If the document loses focus save right away (the idea being this is likely

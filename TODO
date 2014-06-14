@@ -1,6 +1,5 @@
 - Make saving work better
   - Refactor to be more OO
-- focus grabbing breaks find in some cases
 - Vim like commands for some stuff
   - Commands
   - :set ... options
