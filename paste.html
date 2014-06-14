@@ -1,3 +1,7 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/cryptojs/core.js"></script>
 <script src="/cryptojs/enc-base64.js"></script>
 <script src="/cryptojs/evpkdf.js"></script>
@@ -268,10 +272,8 @@ function rawme(l) {
   #controls { position: absolute; clear: both; bottom: 0; padding-bottom: 0.25em; right: 0.5em; color: #aaa; }
   i { color: #aaa; }
 </style>
-
-<!-- TODO:
-clicking on raw has callback if saving is in progress.
--->
+</head>
+<body>
 <noscript>
   This site requires JavaScript. However there is a command line client:
   <br>
@@ -293,3 +295,5 @@ clicking on raw has callback if saving is in progress.
 <textarea id=x>This is an encrypted paste site. Simply type or paste code here and share the URL.</textarea>
 <div id="command"><input type="text" id="cmd" value=":"></div>
 <div id="controls"><span id="status"></span> &nbsp;&nbsp; <a href="#raw" oncontextmenu='rawme(this)' onclick='alert("This will show the unencrypted data in the location bar (base64 encoded). Only use this for saving locally, do not share the data: URL."); rawme(this)'>raw</a> &bull; <a href="/">new</a> &bull; <a href="/about">about</a></div>
+</body>
+</html>
