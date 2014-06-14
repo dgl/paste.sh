@@ -89,9 +89,11 @@ sub dispatch_request {
     $template =~ s/\{\{editable\}\}/
       ($cookie && $data->{cookie} && $cookie eq $data->{cookie})
       || $path eq 'index'/e;
+    my $public = $path =~ /^p.{8}/;
 
     return [ 200, [
         'Content-type' => 'text/html; charset=UTF-8',
+        !$public ? ('X-Robots-Tag' => 'noindex') : (),
         @common_headers
       ], [ $template ] ];
   },
