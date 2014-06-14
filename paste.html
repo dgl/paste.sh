@@ -50,10 +50,12 @@ onload = function() {
 
   if(!editable) {
     textarea.setAttribute('readonly', true);
+    textarea.setAttribute('spellcheck', false);
     textarea.ondblclick = function() {
       if(confirm("You can't edit this paste, would you like to create a copy? You'll need to share the new URL.")) {
         generate();
         textarea.removeAttribute('readonly');
+        textarea.removeAttribute('spellcheck');
         textarea.ondblclick = null;
         editable = true;
       }
