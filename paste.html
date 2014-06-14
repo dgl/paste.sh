@@ -17,6 +17,8 @@ var cmd = false;
 
 var paste = {
   shouldSave: false,
+  saveTimer: null,
+  text: "",
 };
 
 onload = function() {
@@ -24,7 +26,10 @@ onload = function() {
   // Ensure the element remains focused (little hacky, but easier than
   // implementing selection blocking, key capture, etc).
   textarea.onblur = function() {
-    if(cmd) return;
+    if(cmd) {
+      maybeSave();
+      return;
+    }
     var x = this;
     setTimeout(function() { x.focus() }, 1);
   }
@@ -36,7 +41,7 @@ onload = function() {
     textarea.select();
   } else {
     try {
-      textarea.value = decrypt(getKey(), content);
+      paste.text = textarea.value = decrypt(getKey(), content);
     } catch(e) {
       textarea.value = "Decryption failed (" + e + ")";
       editable = false;
@@ -119,6 +124,7 @@ onload = function() {
   // If the document loses focus save right away (the idea being this is likely
   // someone selecting the URL to share).
   window.onblur = maybeSave;
+  textarea.onmouseout = maybeSave;
 
   window.onbeforeunload = function() {
     if(paste.shouldSave) {
@@ -203,8 +209,14 @@ function shouldSave() {
   if(location.pathname == '/') {
     generate();
   }
-  paste.shouldSave = true;
-  document.getElementById('status').textContent = 'Unsaved';
+  if(paste.text != this.value) {
+    paste.shouldSave = true;
+    paste.text = this.value;
+    document.getElementById('status').textContent = 'Unsaved';
+    if (paste.saveTimer)
+      clearTimeout(paste.saveTimer);
+    paste.saveTimer = setTimeout(maybeSave, 4000);
+  }
 }
 
 function randomStr(n) {

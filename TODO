@@ -1,13 +1,11 @@
 - Make saving work better
   - Refactor to be more OO
-  - Timer to save after 5 seconds (i.e. like Vim's updatetime)
 - focus grabbing breaks find in some cases
 - Vim like commands for some stuff
   - Commands
   - :set ... options
     - number
     - spell
-- Use SSL ID in addition to cookie for client side edit auth, expire cookies
-- Paste expiry
+- Paste expiry?
 - Put haproxy config in git, cleanup
   https://paste.sh/u6flOXJS#Sh4qzPExtJuwIzWlXZYSDSts
