@@ -41,8 +41,17 @@ onload = function() {
     cmd = false;
   }
 
+  var clearOnTouch = false;
+  textarea.ontouchstart = function() {
+    if (clearOnTouch) {
+      textarea.value = '';
+      clearOnTouch = false;
+    }
+  }
+
   if(!serverkey) {
     textarea.select();
+    clearOnTouch = true;
   } else {
     try {
       paste.text = textarea.value = decrypt(getKey(), content);
@@ -128,6 +137,7 @@ onload = function() {
   // If the document loses focus save right away (the idea being this is likely
   // someone selecting the URL to share).
   window.onblur = maybeSave;
+  window.onresize = maybeSave;
   textarea.onmouseout = maybeSave;
 
   window.onbeforeunload = function() {
