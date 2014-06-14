@@ -6,7 +6,7 @@
 <script src="/cryptojs/x64-core.js"></script>
 <script src="/cryptojs/sha512.js"></script>
 
-<title>paste.sh &middot; encrypted pastebin</title>
+<title>paste.sh &middot; {{encrypted}} pastebin</title>
 <script>
 
 var content = '{{content}}';
@@ -27,6 +27,9 @@ onload = function() {
     if(cmd) return;
     var x = this;
     setTimeout(function() { x.focus() }, 1);
+  }
+  textarea.onfocus = function() {
+    cmd = false;
   }
 
   if(!serverkey) {
@@ -62,11 +65,18 @@ onload = function() {
     }
   }
 
+  textarea.onmousedown = function(e) {
+    if(!editable) return;
+    // Middle click paste
+    if(e.button == 1 && !serverkey) {
+      textarea.value = '';
+    }
+  }
+
   // Note the content changed and we should save this.
   textarea.onchange = shouldSave;
   textarea.oninput = shouldSave;
 
-  // Make tab key work, keep shift+tab as a method to get to the URL bar.
   var seen_esc = false;
   textarea.onkeydown = function(e) {
     if(seen_esc && e.shiftKey && e.keyCode == 186 /* : */) {
@@ -94,12 +104,15 @@ onload = function() {
       // XXX: alt gr, etc handling.
       shouldSave.call(this);
     }
-    if(e.keyCode == 9 && !e.shiftKey && !e.ctrlKey) {
+    // Make tab key work, keep shift+tab as a method to get to the URL bar.
+    if(e.keyCode == 9 && !seen_esc && !e.shiftKey && !e.ctrlKey) {
       e.preventDefault();
       var s = this.selectionStart;
       this.value = this.value.substring(0, this.selectionStart) + "\t" +
         this.value.substring(this.selectionEnd);
       this.selectionEnd = s + 1; 
+    } else if (e.keyCode == 9) {
+      cmd = true;
     }
   }
 
@@ -118,7 +131,7 @@ onload = function() {
 
 function getKey() {
   var hash = location.hash.substr(1);
-  // Allow empty keys on /about, etc. but not on real pastes
+  // Allow empty keys on special URLs like /about and public pastes (/p.{8}) but not encrypted ones.
   if(hash.length < 18 && (location.pathname.length == 8 ||
         (location.pathname.length > 8 && location.pathname[1] != 'p'))) {
     throw "Invalid hash, ensure you have the full URL, including the full '#xxxx' part at the end";
@@ -205,7 +218,7 @@ function generate() {
   }
   var r = randomStr(6);
   var clientkey = randomStr(18);
-  history.replaceState(null, '', '/' + r + '#' + clientkey);
+  history.replaceState(null, '', '/' + r + (clientkey ? '#' + clientkey : ''));
   getServerKey(); // XXX: racy
 }
 
@@ -238,7 +251,8 @@ function rawme(l) {
   }
   textarea:focus, textarea:active, textarea:disabled { background: white; color: black; border: 0; outline: none; }
   #command { display: none; position: absolute; float: left; bottom:0; left: 0; padding-bottom: 0.25em; }
-  #command input { border: 0; outline: none; }
+  #command input { border: 0; outline: none; font-family: Consolas, Monaco, Lucida Console, Liberation Mono, DejaVu
+    Sans Mono, Bitstream Vera Sans Mono, Couri  er New, monospace; }
   #controls { position: absolute; clear: both; bottom: 0; padding-bottom: 0.25em; right: 0.5em; color: #aaa; }
   i { color: #aaa; }
 </style>

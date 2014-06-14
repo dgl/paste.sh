@@ -82,18 +82,19 @@ sub dispatch_request {
 
     open my $fh, "<", "paste.html" or die $!;
     my $template = join "", <$fh>;
+    my $public = $path =~ /^p.{8}/;
 
+    $template =~ s/\{\{encrypted\}\}/$public ? "" : "encrypted"/e;
     $template =~ s/\{\{content\}\}/$data->{content}/;
     $template =~ s/\{\{serverkey\}\}/
       to_json($data->{serverkey} || "", { allow_nonref => 1 })/e;
     $template =~ s/\{\{editable\}\}/
       ($cookie && $data->{cookie} && $cookie eq $data->{cookie})
       || $path eq 'index'/e;
-    my $public = $path =~ /^p.{8}/;
 
     return [ 200, [
         'Content-type' => 'text/html; charset=UTF-8',
-        !$public ? ('X-Robots-Tag' => 'noindex') : (),
+        (!$public && $path =~ /.{8}/) ? ('X-Robots-Tag' => 'noindex') : (),
         @common_headers
       ], [ $template ] ];
   },
