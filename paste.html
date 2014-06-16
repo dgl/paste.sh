@@ -286,9 +286,16 @@ function rawme(l) {
     Sans Mono, Bitstream Vera Sans Mono, Couri  er New, monospace; }
   #controls { position: absolute; clear: both; bottom: 0; padding-bottom: 0.25em; right: 0.5em; color: #aaa; }
   i { color: #aaa; }
+  #flattr { position: absolute; left: 11em; top: 2px; z-index: 1; }
 </style>
 </head>
 <body>
+<script>
+  // Avoid using the JS version of flattr and don't reveal anything but /about via referer as I don't trust them to have code on this page.
+  if (location.pathname == '/about') {
+    document.write('<div id="flattr"><a href="http://flattr.com/thing/1646741/dglpaste-sh-on-GitHub" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a></div>');
+  }
+</script>
 <noscript>
   This site requires JavaScript. However there is a command line client:
   <br>
