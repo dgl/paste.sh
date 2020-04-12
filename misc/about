@@ -29,9 +29,9 @@ install it:
 Why?
 ====
 
-OTR works well for keeping chat secure, but sharing larger amounts of text or
-code over chat is not ideal. I wanted a simple way to share things with a low
-barrier to entry but that is still relatively[1] secure.
+OTR or Signal works well for keeping chat secure, but sharing larger amounts of
+text or code over chat is not ideal. I wanted a simple way to share things with
+a low barrier to entry but that is still relatively[1] secure.
 
 I won't claim to be an expert on cryptography but I do think while JavaScript in
 a browser is not a perfect environment it is not entirely useless (as claimed in
@@ -86,15 +86,12 @@ Simple vim integration:
 Who?
 ====
 
-David Leadbeater (@davidgl; https://dgl.cx/contact) wrote this. If you like this
-thank me via Flattr (above).
+David Leadbeater (@davidgl; https://dgl.cx/contact) wrote this.
 
 Favicon from "Silk" by Mark James: http://www.famfamfam.com/lab/icons/silk/
 
 -- 
-[1]: It's not on the level of e.g. https://crypto.cat/, especially due to having
-     to trust that the server is serving you the right JavaScript. Although:
-     https://blog.crypto.cat/2013/07/new-critical-vulnerability-in-cryptocat-details/
+[1]: You have to trust that the server is serving you the right JavaScript.
 [2]: http://www.matasano.com/articles/javascript-cryptography/
 [3]: https://code.google.com/p/crypto-js/
 [4]: The command line client will work, you just can't delete or change anything
