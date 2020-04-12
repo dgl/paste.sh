@@ -1,5 +1,8 @@
 - Make saving work better
   - Refactor to be more OO
+- Use crypto.subtle if browser supports it
+- Subresource integrity?
+  https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
 - Vim like commands for some stuff
   - Commands
   - :set ... options

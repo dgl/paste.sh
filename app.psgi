@@ -31,7 +31,6 @@ sub dispatch_request {
     my($self) = @_;
     redispatch_to '/index';
   },
-  # For devel, in production this is served by another sever.
   sub (GET + /cryptojs/*.*) {
     my($self, $file) = @_;
     if($file =~ /[^a-z0-9-.]/ || !-f "crypto-js/src/$file") {
