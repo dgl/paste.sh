@@ -43,23 +43,14 @@ randbase64() {
   openssl rand -base64 $1 2>/dev/null | tr '+/' '-_'
 }
 
-# Write data to a temp file and open it on given fd to avoid passing on command
-# line
-tmpfd() {
-  tmp="$(mktemp -t $TMPTMPL)"
-  echo "$1" > "$tmp" || die "Unable to write to temp file."
-  eval "exec $2<$tmp"
-  rm -f $tmp || die "Unable to remove temp file. Aborting to avoid key leak"
-}
-
 writekey() {
   # The full key includes some extras for more entropy. (OpenSSL adds a salt
   # too, so the ID isn't really needed, but won't hurt).
-  tmpfd "${id}${serverkey}${clientkey}${HOST}" 3
+  echo "${id}${serverkey}${clientkey}${HOST}"
 }
 
 encrypt() {
-  local cmd arg id clientkey
+  local cmd arg
   cmd="$1"
   arg="$2"
   id="$3"
@@ -97,9 +88,8 @@ encrypt() {
   trap 'rm -f "${file}"' EXIT
   # It would be nice to use PBKDF2 or just more iterations of the key derivation
   # function, but the OpenSSL command line tool can't do that.
-  writekey
   $cmd "$arg" \
-    | openssl enc -aes-256-cbc -md sha512 -pass fd:3 -base64 > "${file}"
+    | 3<<<"$(writekey)" openssl enc -aes-256-cbc -md sha512 -pass fd:3 -base64 > "${file}"
 
   pasteauth=""
   if [[ -f "$HOME/.config/paste.sh/auth" ]]; then
@@ -120,7 +110,7 @@ encrypt() {
 }
 
 decrypt() {
-  local url id
+  local url
   url="$1"
   id="$2"
   clientkey=$3
@@ -128,9 +118,8 @@ decrypt() {
   trap 'rm -f "${tmpfile}"' EXIT
   curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
-  writekey
   tail -n +2 "${tmpfile}" | \
-    openssl enc -d -aes-256-cbc -md sha512 -pass fd:3 -base64
+    3<<<"$(writekey)" openssl enc -d -aes-256-cbc -md sha512 -pass fd:3 -base64
   exit $?
 }
 
@@ -160,11 +149,11 @@ public=0
 main() {
   if [[ $# -gt 0 ]]; then
     if [[ ${1:0:8} = https:// ]]; then
-      url=$(cut -d# -f1 <<< "$1")
-      id=$(cut -d/ -f4 <<< "${url}")
-      clientkey=$(cut -sd# -f2 <<< "$1")
+      url=$(cut -d# -f1 <<<"$1")
+      id=$(cut -d/ -f4 <<<"${url}")
+      clientkey=$(cut -sd# -f2 <<<"$1")
       if [[ $# -eq 1 ]]; then
-        decrypt "$id" "$clientkey"
+        decrypt "$url" "$id" "$clientkey"
       else
         shift
         main "$@"
