@@ -21,6 +21,13 @@
 #   Print paste:
 #     $ paste.sh 'https://paste.sh/xxxxx#xxxx'
 #     (You need to quote or escape the URL due to the #)
+#
+#   The command line client by default does not store an identifiable cookie
+#   with pastes, you can run "paste.sh -i" to initialise a cookie, which means
+#   you can then update pastes:
+#
+#     paste.sh 'https://paste.sh/xxxxx#xxxx' some-file
+#
 
 HOST=https://paste.sh
 TMPTMPL=paste.XXXXXXXX
@@ -40,9 +47,9 @@ randbase64() {
 # line
 tmpfd() {
   tmp="$(mktemp -t $TMPTMPL)"
-  echo "$1" > "$tmp" || die "Unable to write to temp. file."
+  echo "$1" > "$tmp" || die "Unable to write to temp file."
   eval "exec $2<$tmp"
-  rm -f $tmp || die "Unable to remove temp. file. Aborting to avoid key leak"
+  rm -f $tmp || die "Unable to remove temp file. Aborting to avoid key leak"
 }
 
 writekey() {
@@ -52,23 +59,38 @@ writekey() {
 }
 
 encrypt() {
-  local cmd arg
+  local cmd arg id clientkey
   cmd="$1"
   arg="$2"
+  id="$3"
+  clientkey="$4"
 
-  # Generate ID, get server key
-  id="$(randbase64 6)"
-  # TODO: Retry if the error is the id is already taken
-  serverkey=$(curl -fsS "$HOST/new?id=$id")
-  # Yes, this is essentially another salt
-  [[ -n ${serverkey} ]] || die "Failed getting server salt"
+  if [[ -z ${id} ]]; then
+    # Generate ID
+    id="$(randbase64 6)"
+    # Get serverkey
+    # TODO: Retry if the error is the id is already taken
+    serverkey=$(curl -fsS "$HOST/new?id=$id")
+    # Yes, this is essentially another salt
+    [[ -n ${serverkey} ]] || die "Failed getting server salt"
 
-  # Generate client key (nothing stopping you changing this, this seemed like a
-  # reasonable trade off; 144 bits)
-  clientkey="$(randbase64 18)"
-  if [[ $public == 1 ]]; then
-    clientkey=
-    id="p${id}"
+    if [[ $public == 1 ]]; then
+      clientkey=
+      id="p${id}"
+    fi
+  else
+    tmpfile=$(mktemp -t $TMPTMPL)
+    trap 'rm -f "${tmpfile}"' EXIT
+    curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
+    serverkey=$(head -n1 "${tmpfile}")
+  fi
+
+  if [[ $public == 0 ]]; then
+    if [[ -z $clientkey ]]; then
+      # Generate client key (nothing stopping you changing this, this seemed like
+      # a reasonable trade off; 144 bits)
+      clientkey="$(randbase64 18)"
+    fi
   fi
 
   file=$(mktemp -t $TMPTMPL)
@@ -79,9 +101,14 @@ encrypt() {
   $cmd "$arg" \
     | openssl enc -aes-256-cbc -md sha512 -pass fd:3 -base64 > "${file}"
 
-  # Get rid of the temp. file once server supports HTTP/1.1 chunked uploads
+  pasteauth=""
+  if [[ -f "$HOME/.config/paste.sh/auth" ]]; then
+    pasteauth="$(<$HOME/.config/paste.sh/auth)"
+  fi
+
+  # Get rid of the temp file once server supports HTTP/1.1 chunked uploads
   # correctly.
-  curl -sS -0 -H "X-Server-Key: ${serverkey}" -T "${file}" "$HOST/${id}" \
+  curl -sS -0 -H "X-Server-Key: ${serverkey}" -T "${file}" "$HOST/${id}" -b "$pasteauth" \
     || die "Failed pasting data"
 
   echo -n "$HOST/${id}"
@@ -93,9 +120,10 @@ encrypt() {
 }
 
 decrypt() {
-  url=$(cut -d# -f1 <<< "$1")
-  id=$(cut -d/ -f4 <<< "${url}")
-  clientkey=$(cut -sd# -f2 <<< "$1")
+  local url id
+  url="$1"
+  id="$2"
+  clientkey=$3
   tmpfile=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${tmpfile}"' EXIT
   curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
@@ -132,34 +160,46 @@ public=0
 main() {
   if [[ $# -gt 0 ]]; then
     if [[ ${1:0:8} = https:// ]]; then
-      decrypt "$1"
+      url=$(cut -d# -f1 <<< "$1")
+      id=$(cut -d/ -f4 <<< "${url}")
+      clientkey=$(cut -sd# -f2 <<< "$1")
+      if [[ $# -eq 1 ]]; then
+        decrypt "$id" "$clientkey"
+      else
+        shift
+        main "$@"
+      fi
+    elif [[ ${1} == "-i" ]]; then
+      mkdir -p "$HOME/.config/paste.sh"
+      umask 0277
+      (echo -n pasteauth=; randbase64 18) > "$HOME/.config/paste.sh/auth"
+    elif [[ ${1} == "-p" ]]; then
+      shift
+      public=1
+      main "$@"
+    elif [[ ${1} == "--" ]]; then
+      shift
+      main "$@"
     elif [ -e "${1}" -o "${1}" == "-" ]; then
       # File (also handle "-", via cat)
       if [ "${1}" != "-" -a "$(fsize "${1}")" -gt $[640 * 1024] ]; then
         die "${1}: File too big"
       fi
-      encrypt "cat --" "$1"
-    elif [[ ${1} == "-p" ]]; then
-      shift
-      public=1
-      main "$@"
+      encrypt "cat --" "$1" "$id" "$clientkey"
     else
       echo "$1: No such file and not a https URL"
       exit 1
     fi
   elif ! [ -t 0 ]; then  # Something piped to us, read it
-    encrypt cat "-"
+    encrypt cat "-" "$id" "$clientkey"
   # No input, maybe read clipboard
   elif [[ $(uname) = Darwin ]]; then
-    encrypt pbpaste
+    encrypt pbpaste "" "$id" "$clientkey"
   elif [[ -n $DISPLAY ]]; then
-    encrypt xsel "-o"
+    encrypt xsel "-o" "$id" "$clientkey"
   else
     echo "paste.sh client -- no clipboard available"
     echo "Try: $0 file"
   fi
 }
 main "$@"
-
-# Defeat Apple: https://infosec.exchange/@dgl/110983591873383881
-# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
