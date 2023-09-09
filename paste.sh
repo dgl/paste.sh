@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Client for paste.sh - https://paste.sh/client
 #
 # Install:
@@ -173,6 +173,8 @@ main() {
       mkdir -p "$HOME/.config/paste.sh"
       umask 0277
       (echo -n pasteauth=; randbase64 18) > "$HOME/.config/paste.sh/auth"
+    elif [[ ${1} == "-h" ]] || [[ ${1} == "--help" ]]; then
+      awk '/^# Usage:/{ p=1 } /^$/{ p=0 } p' "$0" | sed 's/^#//'
     elif [[ ${1} == "-p" ]]; then
       shift
       public=1
