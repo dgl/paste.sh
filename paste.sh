@@ -59,16 +59,15 @@ encrypt() {
   if [[ -z ${id} ]]; then
     # Generate ID
     id="$(randbase64 6)"
+    if [[ $public == 1 ]]; then
+      clientkey=
+      id="p${id}"
+    fi
     # Get serverkey
     # TODO: Retry if the error is the id is already taken
     serverkey=$(curl -fsS "$HOST/new?id=$id")
     # Yes, this is essentially another salt
     [[ -n ${serverkey} ]] || die "Failed getting server salt"
-
-    if [[ $public == 1 ]]; then
-      clientkey=
-      id="p${id}"
-    fi
   else
     tmpfile=$(mktemp -t $TMPTMPL)
     trap 'rm -f "${tmpfile}"' EXIT
@@ -86,10 +85,10 @@ encrypt() {
 
   file=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${file}"' EXIT
-  # It would be nice to use PBKDF2 or just more iterations of the key derivation
-  # function, but the OpenSSL command line tool can't do that.
+  # The key here is not user controlled, more iterations won't help, but using
+  # -iter and therefore PBKBF2 avoids a warning from OpenSSL.
   $cmd "$arg" \
-    | 3<<<"$(writekey)" openssl enc -aes-256-cbc -md sha512 -pass fd:3 -base64 > "${file}"
+    | 3<<<"$(writekey)" openssl enc -aes-256-cbc -md sha512 -pass fd:3 -iter 1 -base64 > "${file}"
 
   pasteauth=""
   if [[ -f "$HOME/.config/paste.sh/auth" ]]; then
@@ -98,7 +97,9 @@ encrypt() {
 
   # Get rid of the temp file once server supports HTTP/1.1 chunked uploads
   # correctly.
-  curl -sS -0 -H "X-Server-Key: ${serverkey}" -T "${file}" "$HOST/${id}" -b "$pasteauth" \
+  curl -sS -0 -H "X-Server-Key: ${serverkey}" \
+    -H "Content-type: text/vnd.paste.sh-v2" \
+    -T "${file}" "$HOST/${id}" -b "$pasteauth" \
     || die "Failed pasting data"
 
   echo -n "$HOST/${id}"
@@ -119,7 +120,7 @@ decrypt() {
   curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
   tail -n +2 "${tmpfile}" | \
-    3<<<"$(writekey)" openssl enc -d -aes-256-cbc -md sha512 -pass fd:3 -base64
+    3<<<"$(writekey)" openssl enc -d -aes-256-cbc -md sha512 -pass fd:3 -iter 1 -base64
   exit $?
 }
 
@@ -148,7 +149,7 @@ fi
 public=0
 main() {
   if [[ $# -gt 0 ]]; then
-    if [[ ${1:0:8} = https:// ]]; then
+    if [[ ${1:0:8} = https:// ]] || [[ ${1:0:17} = http://localhost: ]]; then
       url=$(cut -d# -f1 <<<"$1")
       id=$(cut -d/ -f4 <<<"${url}")
       clientkey=$(cut -sd# -f2 <<<"$1")
@@ -178,7 +179,7 @@ main() {
       fi
       encrypt "cat --" "$1" "$id" "$clientkey"
     else
-      echo "$1: No such file and not a https URL"
+      echo "$1: No such file and not a URL"
       exit 1
     fi
   elif ! [ -t 0 ]; then  # Something piped to us, read it

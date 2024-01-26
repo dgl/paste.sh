@@ -69,7 +69,7 @@ sub dispatch_request {
     $content =~ s/\G(.{65})/$1\n/g;
 
     return [ 200, [
-        'Content-type' => 'text/plain',
+        'Content-type' => ($data->{type} eq 'v2' ? 'text/vnd.paste.sh-v2' : 'text/plain'),
         @common_headers
       ], [
         $data->{serverkey} . "\n" . $content . "\n"
@@ -92,6 +92,7 @@ sub dispatch_request {
 
     $template =~ s/\{\{encrypted\}\}/$public ? "" : "encrypted"/e;
     $template =~ s/\{\{content\}\}/$data->{content}/;
+    $template =~ s/\{\{type\}\}/exists $data->{type} ? $data->{type} : "v1"/e;
     $template =~ s/\{\{serverkey\}\}/
       to_json($data->{serverkey} || "", { allow_nonref => 1 })/e;
     $template =~ s/\{\{editable\}\}/
@@ -139,11 +140,18 @@ sub dispatch_request {
 
     my $serverkey = $req->header('X-Server-Key');
 
+    my $ct = $req->header('Content-Type');
+    my $type = "v1";
+    if (defined $ct && $ct =~ m{^text/vnd\.paste\.sh-v2\s*(;.*|$)}) {
+      $type = "v2";
+    }
+
     $data{$path} = encode_json {
       content => $content,
       cookie => $cookie,
       timestamp => time,
       serverkey => $serverkey,
+      type => $type,
     };
 
     [ 200,
