@@ -67,9 +67,9 @@
                 }
               }
               textarea.focus();
-              // Firefox likes to scroll to the end, tell it not to
               textarea.selectionStart = 0;
               textarea.selectionEnd = 0;
+              textarea.scrollTo(0, 0);
 
               if(!editable) {
                 textarea.setAttribute('readonly', true);
