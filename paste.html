@@ -32,6 +32,7 @@
 
             onload = function() {
               var textarea = document.getElementById('x');
+              var subjectArea = document.getElementById('s');
               // Ensure the element remains focused (little hacky, but easier than
               // implementing selection blocking, key capture, etc).
               textarea.onblur = function() {
@@ -43,26 +44,21 @@
                 cmd = false;
               }
 
-              var clearOnTouch = false;
-              textarea.ontouchstart = function() {
-                if (clearOnTouch) {
-                  textarea.value = '';
-                  clearOnTouch = false;
-                }
-              }
-
-              if(!serverkey) {
-                textarea.select();
-                clearOnTouch = true;
-              } else if (content.length > 0) {
+              if (serverkey && content.length > 0) {
                 try {
-                  paste.text = textarea.value = decrypt(getKey(), content);
+                  let text = decrypt(getKey(), content);
+                  if (ptype == 'v3') {
+                    let endHeader = text.indexOf("\n\n");
+                    let header = text.slice(0, endHeader);
+                    let subject = header.match(/^Subject:\s*(.*)/m);
+                    if (subject) {
+                      document.getElementById('s').innerText = subject[1];
+                    }
+                    text = text.slice(endHeader + 2);
+                  }
+                  paste.text = textarea.value = text;
                 } catch(e) {
                   textarea.value = "Decryption failed (" + e + ")";
-                  editable = false;
-                }
-                if(!textarea.value && content) {
-                  textarea.value = "Decryption failed";
                   editable = false;
                 }
               }
@@ -96,6 +92,25 @@
               // Note the content changed and we should save this.
               textarea.onchange = shouldSave;
               textarea.oninput = shouldSave;
+              subjectArea.addEventListener("keypress", shouldSave);
+
+              subjectArea.addEventListener("keydown", function(e) {
+                if (e.key == 'Enter') {
+                  e.preventDefault();
+                  textarea.focus();
+                }
+              });
+
+              subjectArea.addEventListener("paste", e => {
+                e.preventDefault();
+                let paste = (e.clipboardData || window.clipboardData).getData("text");
+                paste = paste.replace(/\n/g, "");
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                selection.deleteFromDocument();
+                selection.getRangeAt(0).insertNode(document.createTextNode(paste));
+                selection.collapseToEnd();
+              });
 
               var seen_esc = false;
               textarea.onkeydown = function(e) {
@@ -172,8 +187,8 @@
                 try {
                   // This keeps the key unique per save
                   serverkey = serverkey.substr(0, 8) + randomStr(6);
-                  // Always upgrade to v2 on save
-                  let version = 2;
+                  // Always upgrade to v3 on save
+                  let version = 3;
                   serverSave(location.pathname, encrypt(getKey(), version), version);
                 } catch(e) {
                   alert(e);
@@ -185,16 +200,16 @@
               var xhr = new XMLHttpRequest;
               xhr.open("PUT", path, true);
               xhr.setRequestHeader('X-Server-Key', serverkey);
-              xhr.setRequestHeader('Content-Type', version == 2 ? 'text/vnd.paste.sh-v2' : 'text/plain');
+              xhr.setRequestHeader('Content-Type',
+                version == 3 ? 'text/vnd.paste.sh-v3' :
+                version == 2 ? 'text/vnd.paste.sh-v2' :'text/plain');
               xhr.onreadystatechange = function() {
                 if(this.readyState == this.DONE) {
                   // XXX: check status
                   paste.shouldSave = false;
-                  in_progress = false;
                   document.getElementById('status').textContent = this.responseText;
                 }
               }
-              in_progress = true;
               xhr.send(content);
             }
 
@@ -260,8 +275,12 @@
 
             function encrypt(password, version) {
               message = document.getElementById('x').value;
-              var e;
+              if (version == 3) {
+                message = "Subject: " + document.getElementById('s').innerText.replace(/\n/g, "") + "\n\n" +
+                  message;
+              }
 
+              var e;
               if (version == 1) {
                 // This matches "openssl enc -aes-256-cbc -md sha512"
                 e = CryptoJS.lib.PasswordBasedCipher.encrypt(
@@ -279,7 +298,7 @@
 
             function decrypt(password, message) {
               var e;
-              let version = ptype == 'v2' ? 2 : 1;
+              let version = ptype == 'v2' || ptype == 'v3' ? 2 : 1;
               if (version == 1) {
                 e = CryptoJS.lib.PasswordBasedCipher.decrypt(
                     CryptoJS.algo.AES, message, password,
@@ -294,7 +313,7 @@
               try {
                 out = e.toString(CryptoJS.enc.Utf8);
               } catch(err) {
-                console.log(err);
+                console.error(err);
                 out = e.toString(CryptoJS.enc.Latin1);
               }
               return out;
@@ -309,21 +328,29 @@
         <style>
             body {
                 margin: 0;
-                padding: 0;
+                padding: 1em;
+                padding-top: .5em;
+                background: #eee;
+            }
+            #s {
+              font-size: 120%;
+              font-weight: bold;
+              color: #777;
+              height: 3ex;
+              margin-left: .2em;
+              vertical-align: bottom;
             }
             #x {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
                 width: 100%;
-                border: 0;
+                border: 1px solid #ddd;
+                border-radius: 10px;
                 -webkit-box-sizing: border-box;
                 -moz-box-sizing: border-box;
                 box-sizing: border-box;
-                margin: 0;
-                padding: 0.5em;
-                height: 97%;
+                margin-bottom: .5em;
+                margin-top: .5em;
+                padding: 1em;
+                height: calc(100vh - 2em - 6ex);
                 font-family:
                     Consolas,
                     Monaco,
@@ -368,7 +395,7 @@
                 clear: both;
                 bottom: 0;
                 padding-bottom: 0.25em;
-                right: 0.5em;
+                right: 1em;
                 color: #aaa;
             }
             i {
@@ -400,6 +427,7 @@
             to view text. See
             <a href="https://github.com/dgl/paste.sh">github</a> for more.
         </noscript>
+        <div contenteditable="plaintext-only" id="s">📋🔐 paste.sh</div>
         <textarea
             id="x"
             placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL"

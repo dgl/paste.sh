@@ -69,7 +69,7 @@ sub dispatch_request {
     $content =~ s/\G(.{65})/$1\n/g;
 
     return [ 200, [
-        'Content-type' => ($data->{type} eq 'v2' ? 'text/vnd.paste.sh-v2' : 'text/plain'),
+        'Content-type' => ($data->{type} eq 'v3' ? 'text/vnd.paste.sh-v3' : $data->{type} eq 'v2' ? 'text/vnd.paste.sh-v2' : 'text/plain'),
         @common_headers
       ], [
         $data->{serverkey} . "\n" . $content . "\n"
@@ -144,6 +144,8 @@ sub dispatch_request {
     my $type = "v1";
     if (defined $ct && $ct =~ m{^text/vnd\.paste\.sh-v2\s*(;.*|$)}) {
       $type = "v2";
+    } elsif (defined $ct && $ct =~ m{^text/vnd\.paste\.sh-v3\s*(;.*|$)}) {
+      $type = "v3";
     }
 
     $data{$path} = encode_json {
