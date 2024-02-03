@@ -174,7 +174,7 @@ main() {
       main "$@"
     elif [ -e "${1}" -o "${1}" == "-" ]; then
       # File (also handle "-", via cat)
-      if [ "${1}" != "-" -a "$(fsize "${1}")" -gt $[640 * 1024] ]; then
+      if [ "${1}" != "-" ] && [ "$(fsize "${1}")" -gt $[640 * 1024] ]; then
         die "${1}: File too big"
       fi
       encrypt "cat --" "$1" "$id" "$clientkey"
