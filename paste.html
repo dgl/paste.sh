@@ -28,6 +28,7 @@
               shouldSave: false,
               saveTimer: null,
               text: "",
+              subject: "",
             };
 
             onload = function() {
@@ -52,7 +53,7 @@
                     let header = text.slice(0, endHeader);
                     let subject = header.match(/^Subject:\s*(.*)/m);
                     if (subject) {
-                      document.getElementById('s').innerText = subject[1];
+                      paste.subject = document.getElementById('s').innerText = subject[1];
                     }
                     text = text.slice(endHeader + 2);
                   }
@@ -92,7 +93,7 @@
               // Note the content changed and we should save this.
               textarea.onchange = shouldSave;
               textarea.oninput = shouldSave;
-              subjectArea.addEventListener("keypress", shouldSave);
+              subjectArea.addEventListener("input", shouldSave);
 
               subjectArea.addEventListener("keydown", function(e) {
                 if (e.key == 'Enter') {
@@ -136,8 +137,7 @@
 
                 if(!editable) return;
                 if(!e.ctrlKey && !e.altKey && !e.metaKey) {
-                  // XXX: alt gr, etc handling.
-                  shouldSave.call(this);
+                  shouldSave();
                 }
                 // Make tab key work, keep shift+tab as a method to get to the URL bar.
                 if(e.keyCode == 9 && !seen_esc && !e.shiftKey && !e.ctrlKey) {
@@ -152,8 +152,11 @@
               }
               // Ensure typing and ctrl-a works even if the textarea wasn't focused
               window.onkeydown = function(e) {
-                if (e.ctrlKey || e.charCode >= 32)
-                  textarea.focus();
+                if (e.ctrlKey || e.keyCode >= 32) {
+                  if (e.target.id != "s" && e.target.id != "x") {
+                    textarea.focus();
+                  }
+                }
               }
 
               // If the document loses focus save right away (the idea being this is likely
@@ -248,9 +251,13 @@
               if(location.pathname == '/') {
                 generate();
               }
-              if(paste.text != this.value) {
+
+              var textarea = document.getElementById('x');
+              var subjectArea = document.getElementById('s');
+              if(paste.text != textarea.value || paste.subject != subjectArea.innerText) {
                 paste.shouldSave = true;
-                paste.text = this.value;
+                paste.text = textarea.value;
+                paste.subject = subjectArea.innerText;
                 document.getElementById('status').textContent = 'Unsaved 💾';
                 if (paste.saveTimer)
                   clearTimeout(paste.saveTimer);
