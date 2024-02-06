@@ -83,17 +83,17 @@ encrypt() {
     fi
   fi
 
+  pasteauth=""
+  if [[ -f "$HOME/.config/paste.sh/auth" ]]; then
+    pasteauth="$(<$HOME/.config/paste.sh/auth)"
+  fi
+
   file=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${file}"' EXIT
   # The key here is not user controlled, more iterations won't help, but using
   # -iter and therefore PBKBF2 avoids a warning from OpenSSL.
   $cmd "$arg" \
     | 3<<<"$(writekey)" openssl enc -aes-256-cbc -md sha512 -pass fd:3 -iter 1 -base64 > "${file}"
-
-  pasteauth=""
-  if [[ -f "$HOME/.config/paste.sh/auth" ]]; then
-    pasteauth="$(<$HOME/.config/paste.sh/auth)"
-  fi
 
   # Get rid of the temp file once server supports HTTP/1.1 chunked uploads
   # correctly.
@@ -110,17 +110,31 @@ encrypt() {
   fi
 }
 
+remove_header() {
+  awk 'i == 1 { print }; /^\r?$/ { i=1 }'
+}
+
 decrypt() {
   local url
   url="$1"
   id="$2"
   clientkey=$3
   tmpfile=$(mktemp -t $TMPTMPL)
-  trap 'rm -f "${tmpfile}"' EXIT
-  curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
+  headfile=$(mktemp -t $TMPTMPL)
+  trap 'rm -f "${tmpfile}" "${headfile}"' EXIT
+  curl -fsS -o "${tmpfile}" -D "${headfile}" "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
+  ct="$(grep -i '^content-type:' ${headfile} | cut -d':' -f2)"
+  remove=cat
+  ITERS="-iter 1"
+  if [[ $ct = *text/plain* ]]; then
+    ITERS=""
+  elif [[ $ct = *text/vnd.paste.sh-v3* ]]; then
+    remove=remove_header
+  fi
   tail -n +2 "${tmpfile}" | \
-    3<<<"$(writekey)" openssl enc -d -aes-256-cbc -md sha512 -pass fd:3 -iter 1 -base64
+    3<<<"$(writekey)" openssl enc -d -aes-256-cbc -md sha512 -pass fd:3 $ITERS -base64 | \
+    $remove
   exit $?
 }
 
