@@ -1,9 +1,11 @@
+<pre>
+<span style="line-height: 1">
                                   |               |     
                  __ \   _` |  __| __|  _ \    __| __ \  
                  |   | (   |\__ \ |    __/  \__ \ | | | 
                  .__/ \__,_|____/\__|\___|_)____/_| |_| 
                 _|                                      
-
+</span>
 
 What?
 =====
@@ -19,12 +21,11 @@ Firefox also works well. Reading pastes should work in most browsers with
 JavaScript.
 
 However if you didn't guess from the name there is also a shell script
-"paste.sh"; see https://paste.sh/client or run the following commands to
-install it:
+"paste.sh"; see <a href="https://paste.sh/paste.sh">https://paste.sh/paste.sh</a> or run the following commands
+to install it:
 
-  cd ~/bin
-  curl -O https://raw.github.com/dgl/paste.sh/master/paste.sh
-  chmod +x paste.sh
+  mkdir -p ~/bin
+  cd ~/bin && curl -OJ https://paste.sh && chmod +x paste.sh
 
 Why?
 ====
@@ -61,15 +62,14 @@ it all doing the SSL.
 Where?
 ======
 
-Here, https://paste.sh
+Here, <a href="https://paste.sh">https://paste.sh</a>
 
 Alternatively if you want to see the code or wish to host your own version, the
-source code is available at https://github.com/dgl/paste.sh under the WTFPL:
-https://dgl.cx/licence
+source code is available at <a href="https://github.com/dgl/paste.sh">https://github.com/dgl/paste.sh</a> under <a href="https://dgl.cx/0bsd">0BSD</a>.
 
-There's also a command line client there; the comments in it are worth reading
-if you care about the encryption scheme used (being compatible with the OpenSSL
-command line tool limits the key derivation slightly).
+As mentioned there's also a command line client there; the comments in it are
+worth reading if you care about the encryption scheme used (being compatible
+with the OpenSSL command line tool limits the key derivation slightly).
 
 Tips
 ====
@@ -80,20 +80,30 @@ and the long URL is unwieldy.
 
 Simple vim integration:
 
-  command Paste w | !paste.sh %
-  command PublicPaste w | !paste.sh -p %
+<code>
+  command! -nargs=* Paste w | !paste.sh &lt;args&gt; % | tee /dev/stderr | tail -n1 | (xsel -i 2>/dev/null || pbcopy)
+  command! PublicPaste Paste -p
+</code>
 
 Who?
 ====
 
-David Leadbeater (@davidgl; https://dgl.cx/contact) wrote this.
+David Leadbeater (<a href="https://infosec.exchange/@dgl">@dgl@infosec.exchange</a>; <a href="https://dgl.cx/contact">https://dgl.cx/contact</a>) wrote this.
 
-Favicon from "Silk" by Mark James: http://www.famfamfam.com/lab/icons/silk/
+Abuse
+=====
+
+Sadly some people abuse things like this. We like to have nice things, but that
+doesn't include illegal content, content we consider abusive (e.g. personal
+data such as "doxxing") or data that may threaten the stability of the
+site. Because the majority of data is encrypted we can't automatically remove
+content or scan it, please report any content that you consider abusive to
+<a href="https://paste.sh/abuse">https://paste.sh/abuse</a>.
 
 -- 
 [1]: You have to trust that the server is serving you the right JavaScript.
-[2]: http://www.matasano.com/articles/javascript-cryptography/
-[3]: https://code.google.com/p/crypto-js/
-[4]: The command line client will work, you just can't delete or change anything
-     if you use it.
-[5]: https://mega.co.nz
+[2]: <a href="http://www.matasano.com/articles/javascript-cryptography/">http://www.matasano.com/articles/javascript-cryptography/</a>
+[3]: <a href="https://code.google.com/p/crypto-js/">https://code.google.com/p/crypto-js/</a>
+[4]: The command line client will work.
+[5]: <a href="https://mega.co.nz">https://mega.co.nz</a>
+</pre>

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Client for paste.sh - https://paste.sh/client
+# Client for paste.sh - https://paste.sh
+#
+# ©David Leadbeater <https://dgl.cx/0bsd>, NO WARRANTY
+# SPDX-License-Identifier: 0BSD
 #
 # Install:
-#   cd ~/bin
-#   curl -O https://raw.github.com/dgl/paste.sh/master/paste.sh
-#   chmod +x paste.sh
+#   mkdir -p ~/bin && cd ~/bin && curl -OJ https://paste.sh && chmod +x paste.sh
 #
 # Usage:
 #   Send clipboard:

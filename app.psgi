@@ -13,9 +13,8 @@ my $serverauth = do {
 };
 
 my @common_headers = (
-  'Strict-Transport-Security' => 'max-age=31536000',
-  'Server' => 'paste.sh/' . do { chomp(my $t = `git describe --always`); $t });
-
+  'Strict-Transport-Security' => 'max-age=31536000'
+);
 
 sub _error {
   my($message, $code) = @_;
@@ -48,6 +47,18 @@ sub dispatch_request {
       [ 'Content-type', 'image/x-icon', @common_headers ],
       [ <$fh> ] ];
   },
+  sub (POST + /abuse) {
+    my($self, $path) = @_;
+    my $req = Plack::Request->new($env);
+    open my $fh, ">>", "abuse.txt" or die $!;
+    my $c = $req->content;
+    $c =~ s/[^\x21-\x7F]//g;  # must be url encoded
+    print $fh time, " $c\n";
+    close $fh;
+    return [ 302,
+      [ Location => "/ok" ],
+      [ ] ];
+  },
   sub (GET + /new + ?id=) {
     my($self, $id) = @_;
     if($data{$id}) {
@@ -68,17 +79,23 @@ sub dispatch_request {
     my $content = $data->{content};
     $content =~ s/\G(.{65})/$1\n/g;
 
+    $data->{type} ||= 'v1';
     return [ 200, [
-        'Content-type' => ($data->{type} eq 'v3' ? 'text/vnd.paste.sh-v3' : $data->{type} eq 'v2' ? 'text/vnd.paste.sh-v2' : 'text/plain'),
+        'Content-type' => ($data->{type} eq 'v1' ? 'text/plain' : "text/vnd.paste.sh-$data->{type}"),
         @common_headers
       ], [
         $data->{serverkey} . "\n" . $content . "\n"
       ] ];
   },
+  \&client,
   sub (GET + /**) {
     my($self, $path) = @_;
     my $req = Plack::Request->new($env);
     my $cookie = $req->cookies->{pasteauth};
+
+    if ($path eq 'index' && $req->header('User-Agent') =~ /^curl\//) {
+      return client();
+    }
 
     my $data = exists $data{$path} ? eval { decode_json $data{$path} } : undef;
 
@@ -102,7 +119,8 @@ sub dispatch_request {
     return [ 200, [
         'Content-type' => 'text/html; charset=UTF-8',
         (!$public && $path =~ /.{8}/) ? ('X-Robots-Tag' => 'noindex') : (),
-        @common_headers
+        ($path eq 'index' ? (Vary => 'Accept, User-Agent') : ()),
+        @common_headers,
       ], [ $template ] ];
   },
   sub (PUT + /**) {
@@ -163,6 +181,16 @@ sub dispatch_request {
   sub () {
     _error("Not found", 404);
   }
+}
+
+sub client (GET + /paste.sh) {
+  my($self, $path) = @_;
+  open my $fh, "<", "paste.sh" or die $!;
+  return [ 200, [
+      'Content-type' => 'text/x-shellscript; charset=UTF-8',
+      'Content-Disposition' => 'inline; filename="paste.sh"',
+      @common_headers
+    ], [ <$fh> ] ];
 }
 
 __PACKAGE__->run_if_script;

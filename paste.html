@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="shortcut icon" href="/favicon.ico" />
         <script src="/cryptojs/core.js"></script>
         <script src="/cryptojs/enc-base64.js"></script>
         <script src="/cryptojs/evpkdf.js"></script>
@@ -54,10 +54,15 @@
                     let subject = header.match(/^Subject:\s*(.*)/m);
                     if (subject) {
                       paste.subject = document.getElementById('s').innerText = subject[1];
+                      updateTitle(paste.subject);
                     }
                     text = text.slice(endHeader + 2);
                   }
                   paste.text = textarea.value = text;
+
+                  if (location.pathname.length == 6 && location.pathname.substr(0, 3) == "/ab") {
+                    textarea.outerHTML = "<div id=x>" + paste.text + "</div>";
+                  }
                 } catch(e) {
                   textarea.value = "Decryption failed (" + e + ")";
                   editable = false;
@@ -69,17 +74,10 @@
               textarea.scrollTo(0, 0);
 
               if(!editable) {
-                textarea.setAttribute('readonly', true);
                 textarea.setAttribute('spellcheck', false);
-                textarea.ondblclick = function() {
-                  if(confirm("You can't edit this paste, would you like to create a copy? You'll need to share the new URL.")) {
-                    generate();
-                    textarea.removeAttribute('readonly');
-                    textarea.removeAttribute('spellcheck');
-                    textarea.ondblclick = null;
-                    editable = true;
-                  }
-                }
+                subjectArea.removeAttribute('contenteditable');
+              } else {
+                subjectArea.setAttribute('contenteditable', navigator.vendor.match(/Google/) ?  "plaintext-only" : "");
               }
 
               textarea.onmousedown = function(e) {
@@ -174,6 +172,34 @@
               }
             }
 
+            function updateTitle(subject) {
+              if (subject && !subject.match(/^(📋🔐|[\p{Letter}\p{Number}])/u)) {
+                const canvas = document.createElement("canvas");
+                canvas.width = 96;
+                canvas.height = 96;
+                const contex = canvas.getContext("2d");
+                contex.font = (navigator.platform == 'Win32' || /Linux/.test(navigator.platform)) ? '80px serif' : '96px serif';
+                contex.textAlign = "left";
+                contex.textBaseline = "top";
+                let chars = [...subject];
+                contex.fillText(chars[0], 0, 14);
+                let oldIcon = document.querySelector("link[rel='shortcut icon']");
+                if (oldIcon) oldIcon.remove();
+                let link = document.createElement("link");
+                link.rel = "shortcut icon";
+                link.href = canvas.toDataURL('image/png');
+                document.head.appendChild(link)
+              }
+              if (subject && !subject.match(/ paste\.sh$/)) {
+                let chars = [...subject];
+                if (!subject.match(/^[\p{Letter}\p{Number}]/u)) {
+                  chars.shift();
+                }
+                let newTitle = chars.join("");
+                document.title = newTitle.replace(/^(🔐|\s+)/g, "") + " · paste.sh";
+              }
+            }
+
             function getKey() {
               var hash = location.hash.substr(1);
               // Allow empty keys on special URLs like /about and public pastes (/p.{8}) but not encrypted ones.
@@ -239,25 +265,42 @@
             var oldwarning = false;
 
             function shouldSave() {
-              if(!editable) return;
+              var textarea = document.getElementById('x');
+              var subjectArea = document.getElementById('s');
+
               if(!('crypto' in window) || !('getRandomValues' in window.crypto)) {
                 if(!oldwarning) {
                   alert('This browser does not have crypto.getRandomValues. To securely create pastes please upgrade to a recent version of Chrome or Firefox');
                   oldwarning = true;
                 }
                 document.getElementById('x').disabled = true;
+                e.preventDefault();
                 return;
               }
+
+              if(!editable) {
+                if (confirm("You can't edit this paste, would you like to create a copy? You'll need to share the new URL.")) {
+                  editable = true;
+                  generate();
+                  textarea.removeAttribute('spellcheck');
+                } else {
+                  e.preventDefault();
+                }
+              }
+
+              if(!editable) return;
               if(location.pathname == '/') {
                 generate();
               }
 
-              var textarea = document.getElementById('x');
-              var subjectArea = document.getElementById('s');
-              if(paste.text != textarea.value || paste.subject != subjectArea.innerText) {
+              let subjectChanged = paste.subject != subjectArea.innerText;
+              if(paste.text != textarea.value || subjectChanged) {
                 paste.shouldSave = true;
                 paste.text = textarea.value;
-                paste.subject = subjectArea.innerText;
+                if (subjectChanged) {
+                  paste.subject = subjectArea.innerText;
+                  updateTitle(paste.subject);
+                }
                 document.getElementById('status').textContent = 'Unsaved 💾';
                 if (paste.saveTimer)
                   clearTimeout(paste.saveTimer);
@@ -327,7 +370,8 @@
             }
 
             function rawme(l) {
-              let blob = new Blob([document.getElementById('x').value], { type: "text/plain" });
+              let text = document.getElementById('x').value || paste.text;
+              let blob = new Blob([text], { type: "text/plain" });
               l.href = URL.createObjectURL(blob);
             }
         </script>
@@ -335,7 +379,7 @@
         <style>
             body {
                 margin: 0;
-                padding: 1em;
+                padding: .75em;
                 padding-top: .5em;
                 background: #eee;
             }
@@ -357,7 +401,8 @@
                 margin-bottom: .5em;
                 margin-top: .5em;
                 padding: 1em;
-                height: calc(100vh - 2em - 6ex);
+                min-height: calc(100dvh - 5.5em);
+                max-height: calc(100dvh - 4.5em);
                 font-family:
                     Consolas,
                     Monaco,
@@ -368,8 +413,17 @@
                     Courier New,
                     monospace;
             }
-            textarea:focus,
-            textarea:active,
+            input {
+              width: 20em;
+              font-size: 120%;
+            }
+            div#x {
+              overflow: scroll;
+              overflow-x: auto;
+            }
+            div#x,
+            textarea#x:focus,
+            textarea#x:active,
             textarea:disabled {
                 background: white;
                 color: black;
@@ -394,7 +448,7 @@
                     Liberation Mono,
                     DejaVu Sans Mono,
                     Bitstream Vera Sans Mono,
-                    Couri er New,
+                    Courier New,
                     monospace;
             }
             #controls {
@@ -402,7 +456,7 @@
                 clear: both;
                 bottom: 0;
                 padding-bottom: 0.25em;
-                right: 1em;
+                right: 1.25em;
                 color: #aaa;
             }
             i {
@@ -417,7 +471,7 @@
             <br />
             <pre>
     cd ~/bin
-    curl -O https://raw.github.com/dgl/paste.sh/master/paste.sh
+    curl -OJ https://paste.sh
     chmod +x paste.sh
   </pre
             >
@@ -432,12 +486,15 @@
   </pre
             >
             to view text. See
-            <a href="https://github.com/dgl/paste.sh">github</a> for more.
+            <a href="https://github.com/dgl/paste.sh">github</a> for more details.
         </noscript>
-        <div contenteditable id="s">📋🔐 paste.sh</div>
+        <div id="s">📋🔐 paste.sh</div>
         <textarea
             id="x"
-            placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL"
+            placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL. Saving is automatic 🪄
+
+🐚 For command line users there is paste.sh, a command line script, see about for more details.
+"
         ></textarea>
         <div id="command"><input type="text" id="cmd" value=":" /></div>
         <div id="controls">
