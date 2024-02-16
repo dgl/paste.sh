@@ -76,6 +76,8 @@
               if(!editable) {
                 textarea.setAttribute('spellcheck', false);
                 subjectArea.removeAttribute('contenteditable');
+                subjectArea.style.cursor = 'pointer';
+                subjectArea.addEventListener("click", _ => location = '/');
               } else {
                 subjectArea.setAttribute('contenteditable', navigator.vendor.match(/Google/) ?  "plaintext-only" : "");
               }
@@ -382,14 +384,25 @@
                 padding: .75em;
                 padding-top: .5em;
                 background: #eee;
+                overflow: hidden;
+            }
+            #settings {
+              display: none;
+              float: right;
+              font-size: 120%;
             }
             #s {
+              float: left;
+              width: calc(100% - 4ex);
               font-size: 120%;
               font-weight: bold;
               color: #777;
               height: 3ex;
               margin-left: .2em;
               vertical-align: bottom;
+              overflow: hidden;
+              white-space: nowrap;
+              text-overflow: ellipsis;
             }
             #x {
                 width: 100%;
@@ -412,6 +425,7 @@
                     Bitstream Vera Sans Mono,
                     Courier New,
                     monospace;
+                font-size: small;
             }
             input {
               width: 20em;
@@ -487,6 +501,7 @@
             to view text. See
             <a href="https://github.com/dgl/paste.sh">github</a> for more details.
         </noscript>
+        <span id="settings">⚙️</span>
         <div id="s">📋🔐 paste.sh</div>
         <textarea
             id="x"
