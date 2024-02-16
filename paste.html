@@ -22,6 +22,8 @@
             var serverkey = {{serverkey}};
             var ptype = '{{type}}';
 
+            const placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL. Saving is automatic 🪄\n\n🐚 For command line users there is paste.sh, a command line script, see about for more details.";
+
             var cmd = false;
 
             var paste = {
@@ -67,6 +69,8 @@
                   textarea.value = "Decryption failed (" + e + ")";
                   editable = false;
                 }
+              } else {
+                textarea.setAttribute("placeholder", placeholder);
               }
               textarea.focus();
               textarea.selectionStart = 0;
@@ -434,6 +438,8 @@
             div#x {
               overflow: scroll;
               overflow-x: auto;
+              display: inline-block;
+              font-size: small;
             }
             div#x,
             textarea#x:focus,
@@ -442,6 +448,7 @@
                 background: white;
                 color: black;
                 outline: none;
+                resize: none;
             }
             #command {
                 display: none;
@@ -475,6 +482,31 @@
             i {
                 color: #aaa;
             }
+
+            @media (prefers-color-scheme: dark) {
+                body {
+                  background: #222;
+                  color: #999;
+                }
+
+                #s {
+                  color: #bbb;
+                }
+
+                #x {
+                  color: #ddd;
+                  background: black;
+                  border-color: #555;
+                }
+                div#x, #x:focus, textarea#x:focus {
+                  color: white;
+                  background: black;
+                }
+
+                a {
+                  color: #ccf;
+                }
+            }
         </style>
     </head>
     <body>
@@ -505,10 +537,6 @@
         <div id="s">📋🔐 paste.sh</div>
         <textarea
             id="x"
-            placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL. Saving is automatic 🪄
-
-🐚 For command line users there is paste.sh, a command line script, see about for more details.
-"
         ></textarea>
         <div id="command"><input type="text" id="cmd" value=":" /></div>
         <div id="controls">
