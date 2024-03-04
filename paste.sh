@@ -32,7 +32,7 @@
 
 HOST=https://paste.sh
 TMPTMPL=paste.XXXXXXXX
-
+VERSION=v2
 
 die() {
   echo "${1}" >&2
@@ -66,7 +66,7 @@ encrypt() {
     fi
     # Get serverkey
     # TODO: Retry if the error is the id is already taken
-    serverkey=$(curl -fsS "$HOST/new?id=$id")
+    serverkey=$(curl -fsS "${HOST}/new?id=$id")
     # Yes, this is essentially another salt
     [[ -n ${serverkey} ]] || die "Failed getting server salt"
   else
@@ -99,11 +99,11 @@ encrypt() {
   # Get rid of the temp file once server supports HTTP/1.1 chunked uploads
   # correctly.
   curl -sS -0 -H "X-Server-Key: ${serverkey}" \
-    -H "Content-type: text/vnd.paste.sh-v2" \
-    -T "${file}" "$HOST/${id}" -b "$pasteauth" \
+    -H "Content-type: text/vnd.paste.sh-${VERSION}" \
+    -T "${file}" "${HOST}/${id}" -b "$pasteauth" \
     || die "Failed pasting data"
 
-  echo -n "$HOST/${id}"
+  echo -n "${HOST}/${id}"
   if [[ -n $clientkey ]]; then
     echo "#${clientkey}"
   else
@@ -183,6 +183,11 @@ main() {
     elif [[ ${1} == "-p" ]]; then
       shift
       public=1
+      main "$@"
+    elif [[ ${1} == "-v" ]]; then
+      shift
+      VERSION="v${1}"
+      shift
       main "$@"
     elif [[ ${1} == "--" ]]; then
       shift
