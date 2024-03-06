@@ -63,6 +63,16 @@
                 textarea.style.fontSize = '16px';
               }
 
+              if (location.hash.match(/:/)) {
+                // PWA special
+                let m = location.hash.match(/:(pasteauth=[A-Za-z0-9_-]+)$/);
+                if (m && !document.cookie.match(/pasteauth=/)) {
+                  document.cookie = m[1];
+                  location.reload();
+                }
+                location.hash = location.hash.replace(/:(.*)/, "");
+              }
+
               var raw = document.getElementById('raw');
               raw.onclick = raw.oncontextmenu = e => rawme(e.srcElement);
 
@@ -102,6 +112,19 @@
                     textarea.parentElement.insertBefore(img, textarea);
                     setTimeout(() => textarea.style.maxHeight = textarea.style.minHeight = (textarea.clientHeight - img.height) + "px", 0);
                   }
+
+                  let manifest = document.createElement("link");
+                  manifest.rel = "manifest";
+                  // XXX: awfulness https://stackoverflow.com/questions/12271547/shouldnt-json-stringify-escape-unicode-characters
+                  escapeUnicode = s => [...s].map(c => /^[\x20-\x7f]$/.test(c) ? c : c.split("").map(a => "\\u" + a.charCodeAt().toString(16).padStart(4, "0")).join("")).join("");
+                  manifest.href = "data:application/manifest+json;base64," + btoa(escapeUnicode(JSON.stringify({
+                      name: paste.subject || "paste.sh",
+                      display: "standalone",
+                      start_url: "https://paste.sh/" + paste.id + location.hash + ":" + document.cookie,
+                      theme_color: "#254B85",
+                      icons: []
+                    })));
+                  document.head.appendChild(manifest);
 
                 } catch(e) {
                   textarea.value = "Decryption failed (" + e + ")";
@@ -278,6 +301,8 @@
             }
 
             function serverSave(path, content, version, auth) {
+              if (paste.saving) return;
+              paste.saving = true;
               var xhr = new XMLHttpRequest;
               xhr.open("PUT", path, true);
               xhr.setRequestHeader('X-Server-Key', serverkey);
@@ -291,6 +316,7 @@
               xhr.onreadystatechange = function() {
                 if(this.readyState == this.DONE) {
                   document.getElementById('status').textContent = this.responseText;
+                  paste.saving = false;
                   switch (this.status) {
                     case 400:
                     case 403:
@@ -321,6 +347,7 @@
               xhr.onerror = function(e) {
                 document.getElementById('status').textContent = "Error saving!";
                 document.getElementById('status').style.color = 'red';
+                paste.saving = false;
               }
               xhr.send(content);
             }

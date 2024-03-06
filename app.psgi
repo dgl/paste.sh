@@ -15,7 +15,7 @@ my $serverauth = do {
 
 my @common_headers = (
   'Strict-Transport-Security' => 'max-age=31536000',
-  'Content-Security-Policy' => "default-src 'none'; script-src-elem 'sha256-4TiAA7AtiCU+VIGx3BBmi/UY+kSaQkRV82QqAmfdngY=' 'sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8=' 'sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c=' 'sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8=' 'sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE=' 'sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU=' 'sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY=' 'sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA=' 'sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek=' 'sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo=' 'sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0='; style-src-elem 'sha256-CFy5euuW/Knbsfh6uU/xWuBaJu7zrgtAS/YxSl1NY7g='; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types raw; connect-src 'self'; report-uri https://paste.sh/csp"
+  'Content-Security-Policy' => "default-src 'none'; script-src-elem 'sha256-eVS0tgURS6rudteUdVMtT5XLednqE5y5BuHVO2QO0PM=' 'sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8=' 'sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c=' 'sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8=' 'sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE=' 'sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU=' 'sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY=' 'sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA=' 'sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek=' 'sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo=' 'sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0='; style-src-elem 'sha256-CFy5euuW/Knbsfh6uU/xWuBaJu7zrgtAS/YxSl1NY7g='; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types raw; connect-src 'self'; manifest-src data:; report-uri https://paste.sh/csp"
 );
 
 sub _error {
@@ -102,7 +102,7 @@ sub dispatch_request {
 
     my $data = exists $data{$path} ? eval { decode_json $data{$path} } : undef;
 
-    if(!$data && ($path =~ /^p.{8}/ || length($path) < 7)) {
+    if(!$data && ($path =~ /^p.{8}/ || length($path) < 8 || length($path) > 12)) {
       return _error('Not found', 404);
     }
 
