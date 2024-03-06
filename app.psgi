@@ -1,5 +1,6 @@
 package PasteSh;
 use JSON;
+use HTML::Entities;
 use Plack::Request;
 use Scalar::Util qw(blessed);
 use Tie::LevelDB;
@@ -13,7 +14,8 @@ my $serverauth = do {
 };
 
 my @common_headers = (
-  'Strict-Transport-Security' => 'max-age=31536000'
+  'Strict-Transport-Security' => 'max-age=31536000',
+  'Content-Security-Policy' => "default-src 'none'; script-src-elem 'sha256-4TiAA7AtiCU+VIGx3BBmi/UY+kSaQkRV82QqAmfdngY=' 'sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8=' 'sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c=' 'sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8=' 'sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE=' 'sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU=' 'sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY=' 'sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA=' 'sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek=' 'sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo=' 'sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0='; style-src-elem 'sha256-CFy5euuW/Knbsfh6uU/xWuBaJu7zrgtAS/YxSl1NY7g='; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types raw; connect-src 'self'; report-uri https://paste.sh/csp"
 );
 
 sub _error {
@@ -82,9 +84,10 @@ sub dispatch_request {
     $data->{type} ||= 'v1';
     return [ 200, [
         'Content-type' => ($data->{type} eq 'v1' ? 'text/plain' : "text/vnd.paste.sh-$data->{type}"),
+        (exists $data->{etag} && $data->{etag} ? (ETag => "\"$data->{etag}\"") : ()),
         @common_headers
       ], [
-        $data->{serverkey} . "\n" . $content . "\n"
+        ($data->{serverkey} || "") . "\n" . $content . "\n"
       ] ];
   },
   \&client,
@@ -99,8 +102,13 @@ sub dispatch_request {
 
     my $data = exists $data{$path} ? eval { decode_json $data{$path} } : undef;
 
-    if(!$data) {
+    if(!$data && ($path =~ /^p.{8}/ || length($path) < 7)) {
       return _error('Not found', 404);
+    }
+
+    if ($path eq 'index') {
+      # serverkey is no longer used, as we use PBKDF2
+      $data->{content} = $data->{serverkey} = "";
     }
 
     open my $fh, "<", "paste.html" or die $!;
@@ -108,13 +116,13 @@ sub dispatch_request {
     my $public = $path =~ /^p.{8}/;
 
     $template =~ s/\{\{encrypted\}\}/$public ? "" : "encrypted"/e;
-    $template =~ s/\{\{content\}\}/$data->{content}/;
+    $template =~ s/\{\{content\}\}/$data ? $data->{content} : ""/e;
+    $template =~ s/\{\{etag\}\}/exists($data->{etag}) && $data->{etag} ? $data->{etag} : ""/e;
     $template =~ s/\{\{type\}\}/exists $data->{type} ? $data->{type} : "v1"/e;
-    $template =~ s/\{\{serverkey\}\}/
-      to_json($data->{serverkey} || "", { allow_nonref => 1 })/e;
+    $template =~ s/\{\{serverkey\}\}/encode_entities($data->{serverkey} || "")/e;
     $template =~ s/\{\{editable\}\}/
       ($cookie && $data->{cookie} && $cookie eq $data->{cookie})
-      || $path eq 'index'/e;
+      || $path eq 'index' || !$data->{content}/e;
 
     return [ 200, [
         'Content-type' => 'text/html; charset=UTF-8',
@@ -128,6 +136,12 @@ sub dispatch_request {
     my $req = Plack::Request->new($env);
     my $content = $req->content;
     my $cookie = $req->cookies->{pasteauth};
+
+    my $etag = $req->header('ETag');
+    if ($etag && $etag !~ m{^"[A-Za-z0-9/+]{86}"$}) {
+      return _error("Invalid ETag", 400);
+    }
+    $etag =~ s/"//g if $etag;
 
     my $sauth = $req->header('X-Server-Auth');
     if($sauth) {
@@ -143,6 +157,15 @@ sub dispatch_request {
       if(my $cur = eval { decode_json $data{$path} }) {
         if(!$cur->{cookie} || $cur->{cookie} ne $cookie) {
           return _error("Invalid cookie", 403);
+        }
+
+        my $match = $req->header('If-Match');
+        if ($match && $match ne '*') {
+          my $ok = 0;
+          $ok |= $cur->{etag} eq s/"//rg for split /,\s*/, $match;
+          if (!$ok) {
+            return _error("Conflict (disabled; open in another tab and compare the text)", 412);
+          }
         }
       }
     }
@@ -172,6 +195,7 @@ sub dispatch_request {
       timestamp => time,
       serverkey => $serverkey,
       type => $type,
+      etag => $etag,
     };
 
     [ 200,

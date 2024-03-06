@@ -3,37 +3,48 @@
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="shortcut icon" href="/favicon.ico" />
-        <script src="/cryptojs/core.js"></script>
-        <script src="/cryptojs/enc-base64.js"></script>
-        <script src="/cryptojs/evpkdf.js"></script>
-        <script src="/cryptojs/hmac.js"></script>
-        <script src="/cryptojs/pbkdf2.js"></script>
-        <script src="/cryptojs/cipher-core.js"></script>
-        <script src="/cryptojs/aes.js"></script>
-        <script src="/cryptojs/x64-core.js"></script>
-        <script src="/cryptojs/sha512.js"></script>
-        <script src="/cryptojs/opensslpbkdf2.js"></script>
+
+        <script src="/cryptojs/core.js" integrity="sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8="></script>
+        <script src="/cryptojs/enc-base64.js" integrity="sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c="></script>
+        <script src="/cryptojs/evpkdf.js" integrity="sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8="></script>
+        <script src="/cryptojs/hmac.js" integrity="sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE="></script>
+        <script src="/cryptojs/pbkdf2.js" integrity="sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU="></script>
+        <script src="/cryptojs/cipher-core.js" integrity="sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY="></script>
+        <script src="/cryptojs/aes.js" integrity="sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA="></script>
+        <script src="/cryptojs/x64-core.js" integrity="sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek="></script>
+        <script src="/cryptojs/sha512.js" integrity="sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo="></script>
+        <script src="/cryptojs/opensslpbkdf2.js" integrity="sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0="></script>
 
         <title>paste.sh &middot; {{encrypted}} pastebin</title>
         <script>
-
-            var content = '{{content}}';
-            var editable = '{{editable}}';
-            var serverkey = {{serverkey}};
-            var ptype = '{{type}}';
-
             const placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL. Saving is automatic 🪄\n\n🐚 For command line users there is paste.sh, a command line script, see about for more details.";
 
             var cmd = false;
 
             var paste = {
+              id: "",
+              clientkey: "",
               shouldSave: false,
               saveTimer: null,
               text: "",
               subject: "",
+              ct: "",
+              lastLength: 0,
             };
 
+            const rawHTMLPolicy = window.trustedTypes && location.pathname.length == 6 && location.pathname.substr(0, 3) == "/ab" ? trustedTypes.createPolicy("raw", {
+              createHTML: (string) => string,
+            }) : null;;
+
+            var editable, serverkey = "", ptype, etag;
+
             onload = function() {
+              var content = document.forms.bootstrap.content.value;
+              serverkey = document.forms.bootstrap.serverkey.value;
+              editable = document.forms.bootstrap.editable.value;
+              ptype = document.forms.bootstrap.type.value;
+              etag = document.forms.bootstrap.etag.value;
+
               var textarea = document.getElementById('x');
               var subjectArea = document.getElementById('s');
               // Ensure the element remains focused (little hacky, but easier than
@@ -47,30 +58,60 @@
                 cmd = false;
               }
 
-              if (serverkey && content.length > 0) {
+              if (navigator.userAgent.match(/iPhone;/)) {
+                // Avoid zoom in when editing.
+                textarea.style.fontSize = '16px';
+              }
+
+              var raw = document.getElementById('raw');
+              raw.onclick = raw.oncontextmenu = e => rawme(e.srcElement);
+
+              paste.id = location.pathname.substr(1);
+
+              if (content.length > 0) {
                 try {
-                  let text = decrypt(getKey(), content);
+                  let text = decrypt(getKey(), content, etag);
                   if (ptype == 'v3') {
                     let endHeader = text.indexOf("\n\n");
                     let header = text.slice(0, endHeader);
-                    let subject = header.match(/^Subject:\s*(.*)/m);
+                    let subject = header.match(/^Subject:\s*(.*)/im);
                     if (subject) {
                       paste.subject = document.getElementById('s').innerText = subject[1];
                       updateTitle(paste.subject);
+                    }
+                    let ct = header.match(/^Content-Type:\s*(.*)/im);
+                    if (ct) {
+                      paste.ct = ct[1];
                     }
                     text = text.slice(endHeader + 2);
                   }
                   paste.text = textarea.value = text;
 
                   if (location.pathname.length == 6 && location.pathname.substr(0, 3) == "/ab") {
-                    textarea.outerHTML = "<div id=x>" + paste.text + "</div>";
+                    if (rawHTMLPolicy) {
+                      textarea.outerHTML = rawHTMLPolicy.createHTML("<div id=x>" + paste.text + "</div>");
+                    } else {
+                      textarea.outerHTML = "<div id=x>" + paste.text + "</div>";
+                    }
                   }
+
+                  if (paste.ct.match(/^image\//)) {
+                    let img = document.createElement("img");
+                    img.id = "i";
+                    img.src = rawit();
+                    textarea.parentElement.insertBefore(img, textarea);
+                    setTimeout(() => textarea.style.maxHeight = textarea.style.minHeight = (textarea.clientHeight - img.height) + "px", 0);
+                  }
+
                 } catch(e) {
                   textarea.value = "Decryption failed (" + e + ")";
                   editable = false;
                 }
               } else {
                 textarea.setAttribute("placeholder", placeholder);
+                if (editable) {
+                  paste.clientkey = randomStr(18);
+                }
               }
               textarea.focus();
               textarea.selectionStart = 0;
@@ -88,12 +129,9 @@
 
               textarea.onmousedown = function(e) {
                 if(!editable) return;
-                // Middle click paste
-                if(e.button == 1 && !serverkey) {
-                  textarea.value = '';
-                }
               }
 
+              textarea.onbeforeinput = editWarning;
               // Note the content changed and we should save this.
               textarea.onchange = shouldSave;
               textarea.oninput = shouldSave;
@@ -128,7 +166,7 @@
                   document.getElementById('command').style.display = 'block';
                   document.getElementById('cmd').value = ':';
                   setTimeout(function() { document.getElementById('cmd').focus() }, 1);
-                  sene_esc = false;
+                  seen_esc = false;
                   cmd = true;
                 }
                 if(e.keyCode == 27 && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
@@ -207,76 +245,95 @@
             }
 
             function getKey() {
-              var hash = location.hash.substr(1);
+              if (!paste.clientkey) {
+                // Remove "." from the end or other characters that corrupt the key unintentionally.
+                paste.clientkey = location.hash.substr(1).replace(/[^A-Za-z0-9_-]/g, "");
+              }
+              let hash = paste.clientkey;
               // Allow empty keys on special URLs like /about and public pastes (/p.{8}) but not encrypted ones.
-              if(hash.length < 18 && (location.pathname.length == 8 ||
-                    (location.pathname.length > 8 && location.pathname[1] != 'p'))) {
+              if(hash.length < 18 && (paste.id.length == 7 ||
+                    (paste.id.length >= 8 && paste.id[0] != 'p'))) {
                 throw "Invalid hash, ensure you have the full URL, including the full '#xxxx' part at the end";
               }
-              return location.pathname.substr(1) + serverkey + hash + 'https://paste.sh';
+              return paste.id + serverkey + hash + 'https://paste.sh';
             }
 
             function maybeSave() {
               if(paste.shouldSave) {
                 document.getElementById('status').textContent = 'Saving...';
+                paste.lastLength = paste.text.length;
                 try {
-                  // This keeps the key unique per save
-                  serverkey = serverkey.substr(0, 8) + randomStr(6);
+                  if (serverkey) {
+                    // This keeps the key unique per save
+                    serverkey = serverkey.substr(0, 8) + randomStr(6);
+                  }
                   // Always upgrade to v3 on save
                   let version = 3;
-                  serverSave(location.pathname, encrypt(getKey(), version), version);
+                  let ec = encrypt(getKey(), version);
+                  serverSave("/" + paste.id, ec.ciphertext, version, ec.auth);
                 } catch(e) {
                   alert(e);
                 }
               }
             }
 
-            function serverSave(path, content, version) {
+            function serverSave(path, content, version, auth) {
               var xhr = new XMLHttpRequest;
               xhr.open("PUT", path, true);
               xhr.setRequestHeader('X-Server-Key', serverkey);
+              xhr.setRequestHeader('ETag', '"' + auth + '"');
+              if (etag) {
+                xhr.setRequestHeader('If-Match', '"' + etag + '"');
+              }
               xhr.setRequestHeader('Content-Type',
                 version == 3 ? 'text/vnd.paste.sh-v3' :
                 version == 2 ? 'text/vnd.paste.sh-v2' :'text/plain');
               xhr.onreadystatechange = function() {
                 if(this.readyState == this.DONE) {
-                  // XXX: check status
-                  paste.shouldSave = false;
                   document.getElementById('status').textContent = this.responseText;
+                  switch (this.status) {
+                    case 400:
+                    case 403:
+                    case 413:
+                      paste.shouldSave = false;
+                      return;
+                    case 412:
+                      // TODO: conflict resolution?
+                      document.getElementById('status').style.color = 'red';
+                      document.getElementById('x').disabled = true;
+                      paste.shouldSave = false;
+                      return;
+                    case 500:
+                    case 502:
+                    case 503:
+                    case 504:
+                      // XXX: for 502-504 it is possible the server saw the request but didn't
+                      // respond, should potentially add to "If-Match" list.
+                      return;
+                  }
+                  paste.shouldSave = false;
+                  etag = auth;
+                  if (location.pathname != ('/' + paste.id) || location.hash != "#" + paste.clientkey) {
+                    history.replaceState(null, '', '/' + paste.id + (paste.clientkey ? '#' + paste.clientkey : ''));
+                  }
                 }
+              }
+              xhr.onerror = function(e) {
+                document.getElementById('status').textContent = "Error saving!";
+                document.getElementById('status').style.color = 'red';
               }
               xhr.send(content);
             }
 
-            function getServerKey() {
-              var xhr = new XMLHttpRequest;
-              xhr.open("GET", '/new?id=' + location.pathname.substr(1), true);
-              xhr.onreadystatechange = function() {
-                if(this.readyState == this.DONE) {
-                  serverkey = this.responseText;
-                }
-              }
-              xhr.send();
-            }
-
-
-            // TODO: Not hooked up yet
-            function updateCursorPos() {
-              var lines = this.value.substring(0, this.selectionStart).split("\n");
-              var line = lines.length;
-              var col = lines[lines.length - 1].length;
-              return "" + line + "," + col;
-            }
-
             var oldwarning = false;
 
-            function shouldSave() {
+            function editWarning(e) {
               var textarea = document.getElementById('x');
               var subjectArea = document.getElementById('s');
 
               if(!('crypto' in window) || !('getRandomValues' in window.crypto)) {
                 if(!oldwarning) {
-                  alert('This browser does not have crypto.getRandomValues. To securely create pastes please upgrade to a recent version of Chrome or Firefox');
+                  alert('This browser does not have crypto.getRandomValues. To securely create pastes please upgrade to a recent browser.');
                   oldwarning = true;
                 }
                 document.getElementById('x').disabled = true;
@@ -293,15 +350,26 @@
                   e.preventDefault();
                 }
               }
+            }
 
-              if(!editable) return;
-              if(location.pathname == '/') {
+            function shouldSave(e) {
+              var textarea = document.getElementById('x');
+              var subjectArea = document.getElementById('s');
+
+              if(!('crypto' in window) || !('getRandomValues' in window.crypto)) {
+                return;
+              }
+
+              if(!editable) return /* should be unreachable, assuming onbeforeinput support */;
+
+              if(paste.id == "" && location.pathname == '/') {
                 generate();
               }
 
               let subjectChanged = paste.subject != subjectArea.innerText;
               if(paste.text != textarea.value || subjectChanged) {
                 paste.shouldSave = true;
+                let delta = Math.abs(paste.lastLength - textarea.value.length);
                 paste.text = textarea.value;
                 if (subjectChanged) {
                   paste.subject = subjectArea.innerText;
@@ -310,7 +378,7 @@
                 document.getElementById('status').textContent = 'Unsaved 💾';
                 if (paste.saveTimer)
                   clearTimeout(paste.saveTimer);
-                paste.saveTimer = setTimeout(maybeSave, 4000);
+                paste.saveTimer = setTimeout(maybeSave, delta > 2 ? 5000 / Math.log(delta) : 5000);
               }
             }
 
@@ -323,10 +391,8 @@
               if(!document.cookie.match(/pasteauth=/)) {
                 document.cookie = 'pasteauth=' + randomStr(18);
               }
-              var r = randomStr(6);
-              var clientkey = randomStr(18);
-              history.replaceState(null, '', '/' + r + (clientkey ? '#' + clientkey : ''));
-              getServerKey(); // XXX: racy
+              paste.id = randomStr(6);;
+              paste.clientkey = randomStr(18);
             }
 
             function encrypt(password, version) {
@@ -343,26 +409,57 @@
                   CryptoJS.algo.AES, message, password,
                   { hasher: CryptoJS.algo.SHA512 });
               } else {
-                // This matches "openssl enc -aes-256-cbc -md sha512 -iter 1" (PBKF2)
+                // This matches "openssl enc -aes-256-cbc -md sha512 -iter 1" (PBKDF2)
                 let kdf = OpenSSLPbkdf2;
                 e = CryptoJS.lib.PasswordBasedCipher.encrypt(
                   CryptoJS.algo.AES, message, password,
                   { kdf: kdf, hasher: CryptoJS.algo.SHA512 });
               }
-              return e.toString();
+
+              // This is OpenSSLFormatter.stringify, without base64 encoding, to avoid base64 roundtrip for
+              // MAC.
+              let ciphertext = CryptoJS.lib.WordArray.create([0x53616c74, 0x65645f5f]).concat(e.salt).concat(e.ciphertext);
+
+              // This adds an extra HMAC step to avoid directly using the secret key as the HMAC secret, mostly out of paranoia.
+              // This way both keys are derived differently, with a salt included in the derivation above and the HMAC construction used below.
+              // It would be better to directly use HKDF on both, but in order to be compatible with the
+              // openssl command line we need to use PBKDF2 above.
+              // Some discussion: https://security.stackexchange.com/questions/37880/why-cant-i-use-the-same-key-for-encryption-and-mac
+
+              let hmacInner = CryptoJS.HmacSHA512(password, "auth key");
+              let hmac = CryptoJS.HmacSHA512(ciphertext,
+                hmacInner).toString(CryptoJS.enc.Base64).replace(/=+$/, "");
+
+              return {
+                  ciphertext: ciphertext.toString(CryptoJS.enc.Base64),
+                  auth: hmac,
+              };
             }
 
-            function decrypt(password, message) {
+            function decrypt(password, message, auth) {
+              var wa = CryptoJS.enc.Base64.parse(message);
+
+              if (auth) {
+                let hmacInner = CryptoJS.HmacSHA512(password, "auth key");
+                let hmac = CryptoJS.HmacSHA512(wa,
+                  hmacInner).toString(CryptoJS.enc.Base64).replace(/=+$/, "");
+                if (auth != hmac) {
+                  throw "Invalid decryption key or damaged data";
+                }
+              }
+
+              let ciphertext = CryptoJS.format.OpenSSL.parse(wa);
+
               var e;
               let version = ptype == 'v2' || ptype == 'v3' ? 2 : 1;
               if (version == 1) {
                 e = CryptoJS.lib.PasswordBasedCipher.decrypt(
-                    CryptoJS.algo.AES, message, password,
+                    CryptoJS.algo.AES, ciphertext, password,
                     { hasher: CryptoJS.algo.SHA512 });
               } else {
                 let kdf = OpenSSLPbkdf2;
                 e = CryptoJS.lib.PasswordBasedCipher.decrypt(
-                  CryptoJS.algo.AES, message, password,
+                  CryptoJS.algo.AES, ciphertext, password,
                   { kdf: kdf, hasher: CryptoJS.algo.SHA512 });
               }
               let out;
@@ -375,10 +472,21 @@
               return out;
             }
 
+            function rawit() {
+              let ct = paste.ct != "";
+              let data;
+              if (ct && !/^image\/(png|jpeg|gif)/.test(paste.ct)) {
+                ct = false;
+              } else {
+                data = new Uint8Array([...paste.text].map(x => x.charCodeAt(0)));
+              }
+              let text = data ? [data.buffer] : [document.getElementById('x').value || paste.text];
+              let blob = new Blob(text, { type: ct ? paste.ct : "text/plain" });
+              return URL.createObjectURL(blob);
+            }
+
             function rawme(l) {
-              let text = document.getElementById('x').value || paste.text;
-              let blob = new Blob([text], { type: "text/plain" });
-              l.href = URL.createObjectURL(blob);
+              l.href = rawit();
             }
         </script>
 
@@ -483,6 +591,12 @@
                 color: #aaa;
             }
 
+            #i {
+              text-align: center;
+              padding: .4em;
+              max-height: 88vh;
+            }
+
             @media (prefers-color-scheme: dark) {
                 body {
                   background: #222;
@@ -510,6 +624,13 @@
         </style>
     </head>
     <body>
+        <form name="bootstrap">
+          <input type="hidden" name="content" value="{{content}}">
+          <input type="hidden" name="editable" value="{{editable}}">
+          <input type="hidden" name="serverkey" value="{{serverkey}}">
+          <input type="hidden" name="type" value="{{type}}">
+          <input type="hidden" name="etag" value="{{etag}}">
+        </form>
         <noscript>
             This site requires JavaScript. However there is a command line
             client:
@@ -541,7 +662,7 @@
         <div id="command"><input type="text" id="cmd" value=":" /></div>
         <div id="controls">
             <span id="status"></span> &nbsp;&nbsp;
-            <a href="" oncontextmenu="rawme(this)" onclick="rawme(this)">raw</a>
+            <a href="" id="raw">raw</a>
             &bull; <a href="/">new</a> &bull; <a href="/about">about</a>
         </div>
     </body>

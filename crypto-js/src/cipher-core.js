@@ -596,7 +596,7 @@ CryptoJS.lib.Cipher || (function (undefined) {
          */
         parse: function (openSSLStr) {
             // Parse base64
-            var ciphertext = Base64.parse(openSSLStr);
+            var ciphertext = typeof openSSLStr == 'string' ? Base64.parse(openSSLStr) : openSSLStr;
 
             // Shortcut
             var ciphertextWords = ciphertext.words;

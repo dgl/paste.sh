@@ -47,7 +47,7 @@ randbase64() {
 writekey() {
   # The full key includes some extras for more entropy. (OpenSSL adds a salt
   # too, so the ID isn't really needed, but won't hurt).
-  echo "${id}${serverkey}${clientkey}${HOST}"
+  echo "${id}${serverkey}${clientkey}https://paste.sh"
 }
 
 encrypt() {
@@ -64,16 +64,6 @@ encrypt() {
       clientkey=
       id="p${id}"
     fi
-    # Get serverkey
-    # TODO: Retry if the error is the id is already taken
-    serverkey=$(curl -fsS "${HOST}/new?id=$id")
-    # Yes, this is essentially another salt
-    [[ -n ${serverkey} ]] || die "Failed getting server salt"
-  else
-    tmpfile=$(mktemp -t $TMPTMPL)
-    trap 'rm -f "${tmpfile}"' EXIT
-    curl -fsS -o "${tmpfile}" "${url}.txt" || exit $?
-    serverkey=$(head -n1 "${tmpfile}")
   fi
 
   if [[ $public == 0 ]]; then
@@ -98,17 +88,12 @@ encrypt() {
 
   # Get rid of the temp file once server supports HTTP/1.1 chunked uploads
   # correctly.
-  curl -sS -0 -H "X-Server-Key: ${serverkey}" \
+  (curl -sS -o /dev/fd/3 -H "X-Server-Key: ${serverkey}" \
     -H "Content-type: text/vnd.paste.sh-${VERSION}" \
-    -T "${file}" "${HOST}/${id}" -b "$pasteauth" \
-    || die "Failed pasting data"
+    -T "${file}" "${HOST}/${id}" -b "$pasteauth" -w '%{http_code}' \
+    | grep -q 200) 3>&1 || exit $?
 
-  echo -n "${HOST}/${id}"
-  if [[ -n $clientkey ]]; then
-    echo "#${clientkey}"
-  else
-    echo
-  fi
+  echo "${HOST}/${id}${clientkey:+#}${clientkey}"
 }
 
 remove_header() {
@@ -121,9 +106,9 @@ decrypt() {
   id="$2"
   clientkey=$3
   tmpfile=$(mktemp -t $TMPTMPL)
-  headfile=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${tmpfile}" "${headfile}"' EXIT
-  curl -fsS -o "${tmpfile}" -D "${headfile}" "${url}.txt" || exit $?
+  curl -fsS -o "${tmpfile}" -H "Accept: text/plain, text/vnd.paste.sh-v2, text/vnd-paste.sh-v3" \
+    "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
   ct="$(grep -i '^content-type:' ${headfile} | cut -d':' -f2)"
   remove=cat
@@ -180,6 +165,11 @@ main() {
       (echo -n pasteauth=; randbase64 18) > "$HOME/.config/paste.sh/auth"
     elif [[ ${1} == "-h" ]] || [[ ${1} == "--help" ]]; then
       awk '/^# Usage:/{ p=1 } /^$/{ p=0 } p' "$0" | sed 's/^#//'
+    elif [[ ${1} == "-H" ]]; then
+      shift
+      HOST=$1
+      shift
+      main "$@"
     elif [[ ${1} == "-p" ]]; then
       shift
       public=1
