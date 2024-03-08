@@ -19,8 +19,6 @@
         <script>
             const placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL. Saving is automatic 🪄\n\n🐚 For command line users there is paste.sh, a command line script, see about for more details.";
 
-            var cmd = false;
-
             var paste = {
               id: "",
               clientkey: "",
@@ -47,15 +45,12 @@
 
               var textarea = document.getElementById('x');
               var subjectArea = document.getElementById('s');
-              // Ensure the element remains focused (little hacky, but easier than
-              // implementing selection blocking, key capture, etc).
-              textarea.onblur = function() {
-                if(cmd) {
-                  maybeSave();
-                }
-              }
+
+              document.querySelector('#settings').addEventListener('click', e => {
+                document.querySelector('#controls').className = 'open';
+              });
               textarea.onfocus = function() {
-                cmd = false;
+                document.querySelector('#controls').classNAme = '';
               }
 
               if (navigator.userAgent.match(/iPhone;/)) {
@@ -178,41 +173,18 @@
                 selection.collapseToEnd();
               });
 
-              var seen_esc = false;
               textarea.onkeydown = function(e) {
-                if(seen_esc && e.shiftKey && e.keyCode == 186 /* : */) {
-                  e.preventDefault();
-                  return;
-                  // TODO: finish Vim command support.
-                  // :set spell/nospell; number maybe;
-                  // :w[rite], :e[dit], :raw.
-                  document.getElementById('command').style.display = 'block';
-                  document.getElementById('cmd').value = ':';
-                  setTimeout(function() { document.getElementById('cmd').focus() }, 1);
-                  seen_esc = false;
-                  cmd = true;
-                }
-                if(e.keyCode == 27 && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-                  seen_esc = true;
-                  e.preventDefault();
-                  return;
-                } else if(e.keyCode >= 32) {
-                  seen_esc = false;
-                }
-
                 if(!editable) return;
                 if(!e.ctrlKey && !e.altKey && !e.metaKey) {
                   shouldSave();
                 }
                 // Make tab key work, keep shift+tab as a method to get to the URL bar.
-                if(e.keyCode == 9 && !seen_esc && !e.shiftKey && !e.ctrlKey) {
+                if(e.keyCode == 9 && !e.shiftKey && !e.ctrlKey) {
                   e.preventDefault();
                   var s = this.selectionStart;
                   this.value = this.value.substring(0, this.selectionStart) + "\t" +
                     this.value.substring(this.selectionEnd);
                   this.selectionEnd = s + 1;
-                } else if (e.keyCode == 9) {
-                  cmd = true;
                 }
               }
               // Ensure typing and ctrl-a works even if the textarea wasn't focused
@@ -229,6 +201,7 @@
               window.onblur = maybeSave;
               window.onresize = maybeSave;
               textarea.onmouseout = maybeSave;
+              textarea.onblur = maybeSave;
 
               window.onbeforeunload = function() {
                 if(paste.shouldSave) {
@@ -283,7 +256,9 @@
 
             function maybeSave() {
               if(paste.shouldSave) {
-                document.getElementById('status').textContent = 'Saving...';
+                let status = document.getElementById('status')
+                status.textContent = 'Saving...';
+                status.className = '';
                 paste.lastLength = paste.text.length;
                 try {
                   if (serverkey) {
@@ -315,11 +290,20 @@
                 version == 2 ? 'text/vnd.paste.sh-v2' :'text/plain');
               xhr.onreadystatechange = function() {
                 if(this.readyState == this.DONE) {
-                  document.getElementById('status').textContent = this.responseText;
+                  let status = document.getElementById('status')
+                  status.textContent = this.responseText;
                   paste.saving = false;
                   switch (this.status) {
-                    case 400:
                     case 403:
+                      if (!etag) {
+                        // (Unlikely) ID clash, try a new ID...
+                        generate();
+                        maybeSave();
+                      } else {
+                        paste.shouldSave = false;
+                      }
+                      return;
+                    case 400:
                     case 413:
                       paste.shouldSave = false;
                       return;
@@ -329,6 +313,7 @@
                       document.getElementById('x').disabled = true;
                       paste.shouldSave = false;
                       return;
+                    case 0:
                     case 500:
                     case 502:
                     case 503:
@@ -338,6 +323,8 @@
                       return;
                   }
                   paste.shouldSave = false;
+                  status.className = 'low';
+                  status.style.color = '';
                   etag = auth;
                   if (location.pathname != ('/' + paste.id) || location.hash != "#" + paste.clientkey) {
                     history.replaceState(null, '', '/' + paste.id + (paste.clientkey ? '#' + paste.clientkey : ''));
@@ -345,8 +332,10 @@
                 }
               }
               xhr.onerror = function(e) {
-                document.getElementById('status').textContent = "Error saving!";
-                document.getElementById('status').style.color = 'red';
+                let status = document.getElementById('status');
+                status.textContent = "Error saving!";
+                status.style.color = 'red';
+                status.className = '';
                 paste.saving = false;
               }
               xhr.send(content);
@@ -402,7 +391,9 @@
                   paste.subject = subjectArea.innerText;
                   updateTitle(paste.subject);
                 }
-                document.getElementById('status').textContent = 'Unsaved 💾';
+                let status = document.getElementById('status');
+                status.textContent = 'Unsaved 💾';
+                status.className = '';
                 if (paste.saveTimer)
                   clearTimeout(paste.saveTimer);
                 paste.saveTimer = setTimeout(maybeSave, delta > 2 ? 5000 / Math.log(delta) : 5000);
@@ -417,6 +408,7 @@
             function generate() {
               if(!document.cookie.match(/pasteauth=/)) {
                 document.cookie = 'pasteauth=' + randomStr(18);
+                let status = document.querySelector('#status');
               }
               paste.id = randomStr(6);;
               paste.clientkey = randomStr(18);
@@ -520,20 +512,23 @@
         <style>
             body {
                 margin: 0;
-                padding: .75em;
-                padding-top: .5em;
+                padding: .6em;
+                padding-top: .4em;
                 background: #eee;
                 overflow: hidden;
             }
             #settings {
               display: none;
               float: right;
+              text-align: right;
+              cursor: pointer;
+            }
+            #settings, #s {
               font-size: 120%;
             }
             #s {
               float: left;
               width: calc(100% - 4ex);
-              font-size: 120%;
               font-weight: bold;
               color: #777;
               height: 3ex;
@@ -546,15 +541,15 @@
             #x {
                 width: 100%;
                 border: 1px solid #ddd;
-                border-radius: 10px;
+                border-radius: 8px;
                 -webkit-box-sizing: border-box;
                 -moz-box-sizing: border-box;
                 box-sizing: border-box;
                 margin-bottom: .5em;
                 margin-top: .5em;
-                padding: 1em;
-                min-height: calc(100dvh - 5.5em);
-                max-height: calc(100dvh - 4.5em);
+                padding: .8em;
+                min-height: calc(100dvh - 5em);
+                max-height: calc(100dvh - 4em);
                 font-family:
                     Consolas,
                     Monaco,
@@ -565,6 +560,76 @@
                     Courier New,
                     monospace;
                 font-size: small;
+            }
+            @media only screen and (max-width: 900px) {
+              body {
+                padding: .5em;
+                padding-top: .3em;
+              }
+              #x {
+                border-radius: 5px;
+                padding: .7em;
+              }
+            }
+            @media only screen and (min-width: 451px) {
+              #controls, #status {
+                position: absolute;
+                bottom: 0;
+                padding-bottom: .15em;
+              }
+              #controls {
+                right: 1.25em;
+              }
+              #status {
+                right: 22ex;
+              }
+            }
+            @media only screen and (max-width: 450px) {
+              body {
+                padding: 0;
+                padding-top: .2em;
+              }
+              #settings {
+                position: absolute;
+                display: block;
+                right: 0;
+                top: .2rem;
+              }
+              #controls {
+                display: none;
+                position: absolute;
+                right: 0;
+                top: .2rem;
+                z-index: 10;
+                height: 2.5em;
+                padding-left: 1em;
+                font-size: 120%;
+              }
+              #controls::after {
+                content: "⚙️";
+              }
+              #controls.open, #settings:active + #controls, #controls:hover, #controls:active {
+                display: inline-block;
+              }
+              #x {
+                border-radius: 0px;
+                border: none;
+                border-top: 1px solid #ddd;
+                margin: 0;
+                margin-top: .3em;
+                padding: .5em;
+                min-height: calc(100dvh - 2.5em);
+              }
+              #status {
+                position: absolute;
+                font-size: 120%;
+                right: 3ex;
+                top: .2rem;
+                z-index: 9;
+              }
+              #controls:hover + #status, #controls:active + #status, #controls.open + #status {
+                right: 22ex;
+              }
             }
             input {
               width: 20em;
@@ -585,37 +650,17 @@
                 outline: none;
                 resize: none;
             }
-            #command {
-                display: none;
-                position: absolute;
-                float: left;
-                bottom: 0;
-                left: 0;
-                padding-bottom: 0.25em;
-            }
-            #command input {
-                border: 0;
-                outline: none;
-                font-family:
-                    Consolas,
-                    Monaco,
-                    Lucida Console,
-                    Liberation Mono,
-                    DejaVu Sans Mono,
-                    Bitstream Vera Sans Mono,
-                    Courier New,
-                    monospace;
-            }
             #controls {
-                position: absolute;
-                clear: both;
-                bottom: 0;
-                padding-bottom: 0.25em;
-                right: 1.25em;
                 color: #aaa;
             }
-            i {
+            #status {
                 color: #aaa;
+                opacity: 1;
+            }
+
+            #status.low {
+              opacity: 0;
+              transition: opacity 11s ease-in;
             }
 
             #i {
@@ -639,7 +684,7 @@
                   background: black;
                   border-color: #555;
                 }
-                div#x, #x:focus, textarea#x:focus {
+                div#x, #x:focus, textarea#x:focus, textarea#x:active, textarea:disabled {
                   color: white;
                   background: black;
                 }
@@ -681,16 +726,12 @@
             to view text. See
             <a href="https://github.com/dgl/paste.sh">github</a> for more details.
         </noscript>
-        <span id="settings">⚙️</span>
         <div id="s">📋🔐 paste.sh</div>
-        <textarea
-            id="x"
-        ></textarea>
-        <div id="command"><input type="text" id="cmd" value=":" /></div>
-        <div id="controls">
-            <span id="status"></span> &nbsp;&nbsp;
-            <a href="" id="raw">raw</a>
-            &bull; <a href="/">new</a> &bull; <a href="/about">about</a>
-        </div>
+        <div id="settings">⚙️</div>
+        <span id="controls">
+            <a href="" id="raw">raw</a> &bull; <a href="/">new</a> &bull; <a href="/about">about</a>
+        </span>
+        <span id="status"></span>
+        <textarea id="x"></textarea>
     </body>
 </html>

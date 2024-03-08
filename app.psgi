@@ -5,6 +5,7 @@ use Plack::Request;
 use Scalar::Util qw(blessed);
 use Tie::LevelDB;
 use Web::Simple;
+use MIME::Base64;
 
 tie my %data, 'Tie::LevelDB', 'db';
 
@@ -15,7 +16,7 @@ my $serverauth = do {
 
 my @common_headers = (
   'Strict-Transport-Security' => 'max-age=31536000',
-  'Content-Security-Policy' => "default-src 'none'; script-src-elem 'sha256-eVS0tgURS6rudteUdVMtT5XLednqE5y5BuHVO2QO0PM=' 'sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8=' 'sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c=' 'sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8=' 'sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE=' 'sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU=' 'sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY=' 'sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA=' 'sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek=' 'sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo=' 'sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0='; style-src-elem 'sha256-CFy5euuW/Knbsfh6uU/xWuBaJu7zrgtAS/YxSl1NY7g='; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types raw; connect-src 'self'; manifest-src data:; report-uri https://paste.sh/csp"
+  'Content-Security-Policy' => "default-src 'none'; script-src-elem 'sha256-TjsPhurEfe5I/NIFK2kW+uwGWae+45tt1QLXVcfe3fE=' 'sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8=' 'sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c=' 'sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8=' 'sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE=' 'sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU=' 'sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY=' 'sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA=' 'sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek=' 'sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo=' 'sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0='; style-src-elem 'sha256-weMr9Tf2VOyxLsWKBdTotF/gJqlMGGuSXR9dFB+UztA='; style-src-attr 'unsafe-hashes' 'sha256-MhKNMxi8AYujc7LgatwtyNdREZ6Cf3QT4yvkby13/l0=' 'sha256-HSCYqJVY7H4ZnUNUEhNwSPZvWXUuSxmQ71p6hkhUDCs='; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types raw; connect-src 'self'; manifest-src data:; report-uri https://paste.sh/csp"
 );
 
 sub _error {
@@ -79,7 +80,11 @@ sub dispatch_request {
     }
 
     my $content = $data->{content};
-    $content =~ s/\G(.{65})/$1\n/g;
+    if ($content =~ /^Salted__/) {
+      $content = encode_base64($content);
+    } else {
+      $content =~ s/\G(.{76})/$1\n/g;
+    }
 
     $data->{type} ||= 'v1';
     return [ 200, [
@@ -116,7 +121,7 @@ sub dispatch_request {
     my $public = $path =~ /^p.{8}/;
 
     $template =~ s/\{\{encrypted\}\}/$public ? "" : "encrypted"/e;
-    $template =~ s/\{\{content\}\}/$data ? $data->{content} : ""/e;
+    $template =~ s/\{\{content\}\}/$data ? $data->{content} =~ m{^Salted__} ? encode_base64($data->{content}, "") : $data->{content} : ""/e;
     $template =~ s/\{\{etag\}\}/exists($data->{etag}) && $data->{etag} ? $data->{etag} : ""/e;
     $template =~ s/\{\{type\}\}/exists $data->{type} ? $data->{type} : "v1"/e;
     $template =~ s/\{\{serverkey\}\}/encode_entities($data->{serverkey} || "")/e;
@@ -146,7 +151,7 @@ sub dispatch_request {
     my $sauth = $req->header('X-Server-Auth');
     if($sauth) {
       if($sauth ne $serverauth) {
-        return _error("Invalid auth", 403);
+        return _error("Invalid auth", 401);
       }
       # Authed clients can write anything (for updating about, etc).
     } elsif(length($path) < 8 || length($path) > 12 || $path =~ m{[^A-Za-z0-9_-]}) {
@@ -172,10 +177,15 @@ sub dispatch_request {
 
     $content =~ s/[\r\n]//g;
     if($content =~ m{[^A-Za-z0-9/+=]}) {
-      return _error("Content contains non-base64", 403);
+      return _error("Content contains non-base64", 400);
     }
 
-    if(length $content > (640 * 1024)) {
+    $content = decode_base64($content);
+    if (length($content) < 32 || length($content) % 16 != 0 || "Salted__" ne substr $content, 0, 8) {
+      return _error("Content invalid", 400);
+    }
+
+    if(length $content > (1024 * 1024)) {
       return _error("Content too large", 413);
     }
 
@@ -189,6 +199,8 @@ sub dispatch_request {
       $type = "v3";
     }
 
+    my $ua = $req->header('User-Agent') || "";
+    my $xf = $req->header('X-Forwarded-For') || "";
     $data{$path} = encode_json {
       content => $content,
       cookie => $cookie,
@@ -196,11 +208,15 @@ sub dispatch_request {
       serverkey => $serverkey,
       type => $type,
       etag => $etag,
+      hdr => {
+        ua => $ua,
+        xf => $xf,
+      },
     };
 
     [ 200,
-      [ 'Content-type', 'text/plain', @common_headers ],
-      [ "Saved " . length($content) . " bytes.\n" ] ]
+      [ 'Content-type', 'text/plain; charset=UTF-8', @common_headers ],
+      [ "Saved " . length($content) . " bytes " . ($ua =~ /curl\// ? ".\n" : "☑️\n") ] ]
   },
   sub () {
     _error("Not found", 404);

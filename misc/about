@@ -1,5 +1,5 @@
-<pre>
-<span style="line-height: 1">
+<pre style="white-space: pre-wrap">
+<span style="line-height: 1; white-space: pre">
                                   |               |     
                  __ \   _` |  __| __|  _ \    __| __ \  
                  |   | (   |\__ \ |    __/  \__ \ | | | 
@@ -13,12 +13,8 @@ What?
 This is a simple paste site. It doesn't do syntax highlighting, or get in your
 way. It gives you a textarea and you type in it.
 
-However behind the scenes it is encrypting your data. It uses a recently
-introduced browser feature (crypto.getRandomValues) to do this securely.
-
-This does mean you need a modern browser. It seems to work best in Chrome,
-Firefox also works well. Reading pastes should work in most browsers with
-JavaScript.
+However behind the scenes it is encrypting your data on the client side.
+This does mean you need a browser that supports JavaScript and the Crypto APIs.
 
 However if you didn't guess from the name there is also a shell script
 "paste.sh"; see <a href="https://paste.sh/paste.sh">https://paste.sh/paste.sh</a> or run the following commands
@@ -30,19 +26,35 @@ to install it:
 Why?
 ====
 
-OTR or Signal works well for keeping chat secure, but sharing larger amounts of
+Signal or similar works well for keeping chat secure, but sharing larger amounts of
 text or code over chat is not ideal. I wanted a simple way to share things with
-a low barrier to entry but that is still relatively[1] secure.
+a low barrier to entry but that is still relatively secure.
 
-I won't claim to be an expert on cryptography but I do think while JavaScript in
-a browser is not a perfect environment it is not entirely useless (as claimed in
-[2], although this is now slightly outdated).
+Privacy and Abuse
+=================
+
+Sadly some people abuse things like this. We like to have nice things, but that
+doesn't include illegal content, content we consider abusive (e.g. personal
+data such as "doxxing") or data that may threaten the stability of the
+site. Because the majority of data is encrypted we can't automatically remove
+content or scan it.
+
+Please report any content that you consider abusive to <a href="https://paste.sh/abuse">https://paste.sh/abuse</a>.
+
+As a result of abuse we store some information about pastes:
+- When they were created or updated
+- The source IP address
+- The HTTP User-Agent
+- The 'pasteauth' cookie we assigned (needed to update pastes)
+
+The cookie is essential to the functioning of the web site version of paste.sh.
+If you wish to opt-out of using cookies, please use the command line client.
 
 How?
 ====
 
 JavaScript running in your browser encrypts your data using AES-256 (via the
-CryptoJS[3] library). The key is generated on the client side and the server is
+CryptoJS library). The key is generated on the client side and the server is
 never able to decrypt the data, this works because the URL fragment (the part of
 the URL after the '#' symbol) is never sent to the server.
 
@@ -50,10 +62,11 @@ Beware that depending on how you share the URL with others the fragment part may
 be stored by other systems.
 
 You can edit the paste for some time after pasting; this uses a session cookie
-in your browser. (Yes, if you deny cookies this site won't work, sorry[4]).
+in your browser. (Yes, if you deny cookies this site won't work very well,
+sorry, try the command line client).
 
-There is a limit of 640K of data once encrypted (should be enough for anybody)
-per paste, go and use mega[5] if you want a file sharing site.
+There is a limit of 1 MB of data once encrypted per paste, for other purposes
+you'll need to use a file sharing site.
 
 The server side is fairly simple. I wrote it using Perl, using Web::Simple for
 the HTTP side and Tie::LevelDB for the key/value store with haproxy in front of
@@ -90,20 +103,6 @@ Who?
 
 David Leadbeater (<a href="https://infosec.exchange/@dgl">@dgl@infosec.exchange</a>; <a href="https://dgl.cx/contact">https://dgl.cx/contact</a>) wrote this.
 
-Abuse
-=====
+<a href="/yes">🔴</a> <a href="/no">🔵</a>
 
-Sadly some people abuse things like this. We like to have nice things, but that
-doesn't include illegal content, content we consider abusive (e.g. personal
-data such as "doxxing") or data that may threaten the stability of the
-site. Because the majority of data is encrypted we can't automatically remove
-content or scan it, please report any content that you consider abusive to
-<a href="https://paste.sh/abuse">https://paste.sh/abuse</a>.
-
--- 
-[1]: You have to trust that the server is serving you the right JavaScript.
-[2]: <a href="http://www.matasano.com/articles/javascript-cryptography/">http://www.matasano.com/articles/javascript-cryptography/</a>
-[3]: <a href="https://code.google.com/p/crypto-js/">https://code.google.com/p/crypto-js/</a>
-[4]: The command line client will work.
-[5]: <a href="https://mega.co.nz">https://mega.co.nz</a>
 </pre>
