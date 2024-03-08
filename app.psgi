@@ -216,7 +216,7 @@ sub dispatch_request {
 
     [ 200,
       [ 'Content-type', 'text/plain; charset=UTF-8', @common_headers ],
-      [ "Saved " . length($content) . " bytes " . ($ua =~ /curl\// ? ".\n" : "☑️\n") ] ]
+      [ "Saved " . length($content) . " bytes" . ($ua =~ /curl\// ? ".\n" : " ☑️\n") ] ]
   },
   sub () {
     _error("Not found", 404);
