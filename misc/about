@@ -68,10 +68,6 @@ sorry, try the command line client).
 There is a limit of 1 MB of data once encrypted per paste, for other purposes
 you'll need to use a file sharing site.
 
-The server side is fairly simple. I wrote it using Perl, using Web::Simple for
-the HTTP side and Tie::LevelDB for the key/value store with haproxy in front of
-it all doing the SSL.
-
 Where?
 ======
 
@@ -103,6 +99,8 @@ Who?
 
 David Leadbeater (<a href="https://infosec.exchange/@dgl">@dgl@infosec.exchange</a>; <a href="https://dgl.cx/contact">https://dgl.cx/contact</a>) wrote this.
 
-<a href="/yes">🔴</a> <a href="/no">🔵</a>
+<a href="https://paste.sh/yes">🔴</a> <a href="https://paste.sh/no">🔵</a>
+
+If this isn't for you, there's some notes on <a href="https://paste.sh/alts">alternatives</a>.
 
 </pre>

@@ -1,0 +1,74 @@
+I'm always on the look out for novel ideas, so this is a list of some
+"competitors" or alternatives to paste.sh.
+
+
+Encrypted:
+  - PrivateBin: https://privatebin.info (self hosted, many installs)
+    Uses AES-256 GCM (good)
+    - e.g.: https://bin.disroot.org
+  - 0bin (https://github.com/Tygs/0bin)
+    - e.g. https://paste.ec
+  - https://paste.me
+    Not fully open source, but has a WASM Go component: https://github.com/pastemeofficial/pasteme-wasm
+    (interesting idea, but crypto.subtle supports AES-GCM, so unsure if it's really needed...)
+  - https://github.com/WardPearce/paaster
+    - https://www.reddit.com/r/selfhosted/comments/1116d9c/paaster_v2_endtoend_encrypted_pastebin/
+    - Strange design choices, can't just type in it.
+  - https://github.com/matze/wastebin (optional encryption, argon2, etc...)
+  - https://hemmelig.app/ (secret link sharing, one time use)
+    - Also things like https://onetimesecret.com/
+    - More open source variants...
+      - https://github.com/robinmoisson/staticrypt
+      - https://mprimi.github.io/portable-secret/
+      - https://www.privacyprotect.dev/
+
+(Note paste.sh isn't using AES-GCM but AES-CBC with a custom authentication, this is for compatibility with the OpenSSL command line tool which doesn't support GCM: https://github.com/openssl/openssl/issues/21142)
+
+
+SSH based:
+  - snips.sh
+    - https://www.reddit.com/r/golang/comments/13fyp1k/snipssh_passwordless_anonymous_sshpowered_pastebin/
+    - https://github.com/robherley/snips.sh
+    - https://snips.sh/docs/self-hosting.md
+  - pastes.sh
+    - https://www.reddit.com/r/irc/comments/18x8z7s/pastessh_a_pastebin_for_hackers/
+
+
+"curl" API:
+  - 0x0.st
+    - Open source: https://github.com/mia-0/0x0
+  - paste.rs
+  - ix.io 🪦
+    https://www.reddit.com/r/linuxquestions/comments/189t2wm/will_the_pastebin_alternative_ixio_stay_down/
+
+
+Minimal design:
+  - bin. (https://github.com/w4/bin)
+    - e.g. https://bin.gy
+  - bin (https://github.com/wantguns/bin)
+    - e.g.: https://basedbin.fly.dev/
+
+
+Syntax highlighting:
+  - https://gist.github.com
+  - https://microbin.eu/ (open source, self hostable)
+  - https://github.com/lojewalo/paste
+    - e.g. https://paste.gg
+  - Ghostbin (https://github.com/DHowett/spectre, now archived)
+    - I liked the minimal, full screen UI, very paste.sh style.
+    - e.g.: https://pst.innomi.net
+  [many others...]
+
+
+Markdown support:
+  - https://rentry.co
+  [many others...]
+
+
+Classic:
+  - https://pastebin.com -- the OG[?] (https://en.wikipedia.org/wiki/Pastebin has citation needed)
+  - http://pastie.org
+  [many others...]
+
+
+[Send PRs to https://github.com/dgl/paste.sh/blob/master/misc/alts if you for some reason want to be in this list.]
