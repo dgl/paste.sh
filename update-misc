@@ -1,5 +1,5 @@
 #!/bin/bash
-HOST=https://paste.sh
+HOST=https://paste.qaaq.cc
 
 
 die() {

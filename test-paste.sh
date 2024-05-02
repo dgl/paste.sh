@@ -8,8 +8,8 @@ if [[ $[0+$(<<<"$paste" wc -l)] != 2 ]]; then
 fi
 
 url="$(<<<"$paste" tail -1)"
-if [[ $url != https://paste.sh/*#* ]]; then
-  echo "got '$url', expected a paste.sh one"
+if [[ $url != https://paste.qaaq.cc/*#* ]]; then
+  echo "got '$url', expected a paste.qaaq.cc one"
   exit 1
 fi
 
@@ -20,7 +20,7 @@ if [[ $fetch != "hello world" ]]; then
 fi
 
 public_url="$(echo hello world | ./paste.sh -p | tail -1)"
-if [[ $public_url != https://paste.sh/p+([-_A-Za-z0-9]) ]]; then
+if [[ $public_url != https://paste.qaaq.cc/p+([-_A-Za-z0-9]) ]]; then
   echo "got '$public_url', expected a paste.sh public one"
   exit 1
 fi

@@ -16,7 +16,7 @@ my $serverauth = do {
 
 my @common_headers = (
   'Strict-Transport-Security' => 'max-age=31536000',
-  'Content-Security-Policy' => "default-src 'none'; script-src-elem 'sha256-TjsPhurEfe5I/NIFK2kW+uwGWae+45tt1QLXVcfe3fE=' 'sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8=' 'sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c=' 'sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8=' 'sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE=' 'sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU=' 'sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY=' 'sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA=' 'sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek=' 'sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo=' 'sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0='; style-src-elem 'sha256-weMr9Tf2VOyxLsWKBdTotF/gJqlMGGuSXR9dFB+UztA='; style-src-attr 'unsafe-hashes' 'sha256-MhKNMxi8AYujc7LgatwtyNdREZ6Cf3QT4yvkby13/l0=' 'sha256-HSCYqJVY7H4ZnUNUEhNwSPZvWXUuSxmQ71p6hkhUDCs='; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types raw; connect-src 'self'; manifest-src data:; report-uri https://paste.sh/csp"
+  'Content-Security-Policy' => "default-src 'none'; script-src-elem 'sha256-TjsPhurEfe5I/NIFK2kW+uwGWae+45tt1QLXVcfe3fE=' 'sha256-J+rNifeY/oCTf6N0pQRiRCEePpfMeFLIjLoHds/Cty8=' 'sha256-ZI1+CuyNcia+Vucl/2bX6SZHichglaL8L1gyw8l8j1c=' 'sha256-BugM3Jj5NhEB4AhjoExCxAfyo2pmlE3EQuwdSxvSMk8=' 'sha256-pietFDNE66M/Oh2TMiCEF4NGVSvrq6IMKKBnHZegIEE=' 'sha256-uA2803UHxZZKqjf0OKZI5jUV0LWWGxhw5DEx9R7u5wU=' 'sha256-MtuPdcLFCdAzdf3zQay8pkxDrd6uJ3Hqeezg9opuiPY=' 'sha256-zv8VFScGndG98F3RFjK9E94Tkc6hmNuIF5mUTPrPMpA=' 'sha256-pazpxy7vEXKRc5u5MZt9vArdACbkqM5evVRenrJwhek=' 'sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo=' 'sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0='; style-src-elem 'sha256-weMr9Tf2VOyxLsWKBdTotF/gJqlMGGuSXR9dFB+UztA='; style-src-attr 'unsafe-hashes' 'sha256-MhKNMxi8AYujc7LgatwtyNdREZ6Cf3QT4yvkby13/l0=' 'sha256-HSCYqJVY7H4ZnUNUEhNwSPZvWXUuSxmQ71p6hkhUDCs='; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; require-trusted-types-for 'script'; trusted-types raw; connect-src 'self'; manifest-src data:; report-uri https://paste.qaaq.cc/csp"
 );
 
 sub _error {
@@ -88,7 +88,7 @@ sub dispatch_request {
 
     $data->{type} ||= 'v1';
     return [ 200, [
-        'Content-type' => ($data->{type} eq 'v1' ? 'text/plain' : "text/vnd.paste.sh-$data->{type}"),
+        'Content-type' => ($data->{type} eq 'v1' ? 'text/plain' : "text/vnd.paste.qaaq.cc-$data->{type}"),
         (exists $data->{etag} && $data->{etag} ? (ETag => "\"$data->{etag}\"") : ()),
         @common_headers
       ], [
@@ -223,12 +223,12 @@ sub dispatch_request {
   }
 }
 
-sub client (GET + /paste.sh) {
+sub client (GET + /paste.qaaq.cc) {
   my($self, $path) = @_;
-  open my $fh, "<", "paste.sh" or die $!;
+  open my $fh, "<", "paste.qaaq.cc" or die $!;
   return [ 200, [
       'Content-type' => 'text/x-shellscript; charset=UTF-8',
-      'Content-Disposition' => 'inline; filename="paste.sh"',
+      'Content-Disposition' => 'inline; filename="paste.qaaq.cc"',
       @common_headers
     ], [ <$fh> ] ];
 }

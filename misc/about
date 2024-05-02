@@ -17,11 +17,11 @@ However behind the scenes it is encrypting your data on the client side.
 This does mean you need a browser that supports JavaScript and the Crypto APIs.
 
 However if you didn't guess from the name there is also a shell script
-"paste.sh"; see <a href="https://paste.sh/paste.sh">https://paste.sh/paste.sh</a> or run the following commands
+"paste.sh"; see <a href="https://paste.qaaq.cc/paste.sh">https://paste.qaaq.cc/paste.sh</a> or run the following commands
 to install it:
 
   mkdir -p ~/bin
-  cd ~/bin && curl -OJ https://paste.sh && chmod +x paste.sh
+  cd ~/bin && curl -OJ https://paste.qaaq.cc && chmod +x paste.sh
 
 Why?
 ====
@@ -39,7 +39,7 @@ data such as "doxxing") or data that may threaten the stability of the
 site. Because the majority of data is encrypted we can't automatically remove
 content or scan it.
 
-Please report any content that you consider abusive to <a href="https://paste.sh/abuse">https://paste.sh/abuse</a>.
+Please report any content that you consider abusive to <a href="https://paste.qaaq.cc/abuse">https://paste.qaaq.cc/abuse</a>.
 
 As a result of abuse we store some information about pastes:
 - When they were created or updated
@@ -47,7 +47,7 @@ As a result of abuse we store some information about pastes:
 - The HTTP User-Agent
 - The 'pasteauth' cookie we assigned (needed to update pastes)
 
-The cookie is essential to the functioning of the web site version of paste.sh.
+The cookie is essential to the functioning of the web site version of paste.qaaq.cc.
 If you wish to opt-out of using cookies, please use the command line client.
 
 How?
@@ -71,10 +71,10 @@ you'll need to use a file sharing site.
 Where?
 ======
 
-Here, <a href="https://paste.sh">https://paste.sh</a>
+Here, <a href="https://paste.qaaq.cc">https://paste.qaaq.cc</a>
 
 Alternatively if you want to see the code or wish to host your own version, the
-source code is available at <a href="https://github.com/dgl/paste.sh">https://github.com/dgl/paste.sh</a> under <a href="https://dgl.cx/0bsd">0BSD</a>.
+source code is available at <a href="https://github.com/Alistair1231/paste.sh">https://github.com/Alistair1231/paste.sh</a> under <a href="https://dgl.cx/0bsd">0BSD</a>.
 
 As mentioned there's also a command line client there; the comments in it are
 worth reading if you care about the encryption scheme used (being compatible

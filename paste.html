@@ -15,7 +15,7 @@
         <script src="/cryptojs/sha512.js" integrity="sha256-7jMSjFvKwTzCu7HXcbN1ydvyD1CEj9tMDmzwGrpekxo="></script>
         <script src="/cryptojs/opensslpbkdf2.js" integrity="sha256-oMd+FVHsOUPYtC3Blivb/17OQ/dTtJQ3959UFKn7G/0="></script>
 
-        <title>paste.sh &middot; {{encrypted}} pastebin</title>
+        <title>paste.qaaq.cc &middot; {{encrypted}} pastebin</title>
         <script>
             const placeholder="This is an encrypted paste site. Simply type or paste code here and share the URL. Saving is automatic 🪄\n\n🐚 For command line users there is paste.sh, a command line script, see about for more details.";
 
@@ -113,9 +113,9 @@
                   // XXX: awfulness https://stackoverflow.com/questions/12271547/shouldnt-json-stringify-escape-unicode-characters
                   escapeUnicode = s => [...s].map(c => /^[\x20-\x7f]$/.test(c) ? c : c.split("").map(a => "\\u" + a.charCodeAt().toString(16).padStart(4, "0")).join("")).join("");
                   manifest.href = "data:application/manifest+json;base64," + btoa(escapeUnicode(JSON.stringify({
-                      name: paste.subject || "paste.sh",
+                      name: paste.subject || "paste.qaaq.cc",
                       display: "standalone",
-                      start_url: "https://paste.sh/" + paste.id + location.hash + ":" + document.cookie,
+                      start_url: "https://paste.qaaq.cc/" + paste.id + location.hash + ":" + document.cookie,
                       theme_color: "#254B85",
                       icons: []
                     })));
@@ -236,7 +236,7 @@
                   chars.shift();
                 }
                 let newTitle = chars.join("");
-                document.title = newTitle.replace(/^(🔐|\s+)/g, "") + " · paste.sh";
+                document.title = newTitle.replace(/^(🔐|\s+)/g, "") + " · paste.qaaq.cc";
               }
             }
 
@@ -251,7 +251,7 @@
                     (paste.id.length >= 8 && paste.id[0] != 'p'))) {
                 throw "Invalid hash, ensure you have the full URL, including the full '#xxxx' part at the end";
               }
-              return paste.id + serverkey + hash + 'https://paste.sh';
+              return paste.id + serverkey + hash + 'https://paste.qaaq.cc';
             }
 
             function maybeSave() {
@@ -286,8 +286,8 @@
                 xhr.setRequestHeader('If-Match', '"' + etag + '"');
               }
               xhr.setRequestHeader('Content-Type',
-                version == 3 ? 'text/vnd.paste.sh-v3' :
-                version == 2 ? 'text/vnd.paste.sh-v2' :'text/plain');
+                version == 3 ? 'text/vnd.paste.qaaq.cc-v3' :
+                version == 2 ? 'text/vnd.paste.qaaq.cc-v2' :'text/plain');
               xhr.onreadystatechange = function() {
                 if(this.readyState == this.DONE) {
                   let status = document.getElementById('status')
@@ -709,7 +709,7 @@
             <br />
             <pre>
     cd ~/bin
-    curl -OJ https://paste.sh
+    curl -OJ https://paste.qaaq.cc
     chmod +x paste.sh
   </pre
             >
@@ -720,13 +720,13 @@
             >
             to upload text, or:
             <pre>
-    $ paste.sh https://paste.sh/...
+    $ paste.sh https://paste.qaaq.cc/...
   </pre
             >
             to view text. See
-            <a href="https://github.com/dgl/paste.sh">github</a> for more details.
+            <a href="https://github.com/Alistair1231/paste.sh">github</a> for more details.
         </noscript>
-        <div id="s">📋🔐 paste.sh</div>
+        <div id="s">📋🔐 paste.qaaq.cc</div>
         <div id="settings">⚙️</div>
         <span id="controls">
             <a href="" id="raw">raw</a> &bull; <a href="/">new</a> &bull; <a href="/about">about</a>

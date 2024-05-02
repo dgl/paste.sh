@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Client for paste.sh - https://paste.sh
+# Client for paste.qaaq.cc - https://paste.qaaq.cc
 #
 # ©David Leadbeater <https://dgl.cx/0bsd>, NO WARRANTY
 # SPDX-License-Identifier: 0BSD
 #
 # Install:
-#   mkdir -p ~/bin && cd ~/bin && curl -OJ https://paste.sh && chmod +x paste.sh
+#   mkdir -p ~/bin && cd ~/bin && curl -OJ https://paste.qaaq.cc && chmod +x paste.sh
 #
 # Usage:
 #   Send clipboard:
@@ -23,17 +23,17 @@
 #     $ paste.sh -p [same usage as above]
 #
 #   Print paste:
-#     $ paste.sh 'https://paste.sh/xxxxx#xxxx'
+#     $ paste.sh 'https://paste.qaaq.cc/xxxxx#xxxx'
 #     (You need to quote or escape the URL due to the #)
 #
 #   The command line client by default does not store an identifiable cookie
 #   with pastes, you can run "paste.sh -i" to initialise a cookie, which means
 #   you can then update pastes:
 #
-#     paste.sh 'https://paste.sh/xxxxx#xxxx' some-file
+#     paste.sh 'https://paste.qaaq.cc/xxxxx#xxxx' some-file
 #
 
-HOST=https://paste.sh
+HOST=https://paste.qaaq.cc
 TMPTMPL=paste.XXXXXXXX
 VERSION=v2
 
@@ -50,7 +50,7 @@ randbase64() {
 writekey() {
   # The full key includes some extras for more entropy. (OpenSSL adds a salt
   # too, so the ID isn't really needed, but won't hurt).
-  echo "${id}${serverkey}${clientkey}https://paste.sh"
+  echo "${id}${serverkey}${clientkey}https://paste.qaaq.cc"
 }
 
 encrypt() {
@@ -93,7 +93,7 @@ encrypt() {
   # Get rid of the temp file once server supports HTTP/1.1 chunked uploads
   # correctly.
   (curl -sS -o /dev/fd/3 -H "X-Server-Key: ${serverkey}" \
-    -H "Content-type: text/vnd.paste.sh-${VERSION}" \
+    -H "Content-type: text/vnd.paste.qaaq.cc-${VERSION}" \
     -T "${file}" "${HOST}/${id}" -b "$pasteauth" -w '%{http_code}' \
     | grep -q 200) 3>&1 || exit $?
 
@@ -112,7 +112,7 @@ decrypt() {
   tmpfile=$(mktemp -t $TMPTMPL)
   headfile=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${tmpfile}" "${headfile}"' EXIT
-  curl -fsS -o "${tmpfile}" -H "Accept: text/plain, text/vnd.paste.sh-v2, text/vnd-paste.sh-v3" \
+  curl -fsS -o "${tmpfile}" -H "Accept: text/plain, text/vnd.paste.qaaq.cc-v2, text/vnd-paste.qaaq.cc-v3" \
     -D "${headfile}" "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
   ct="$(grep -i '^content-type:' ${headfile} | cut -d':' -f2)"
@@ -120,7 +120,7 @@ decrypt() {
   ITERS="-iter 1"
   if [[ $ct = *text/plain* ]]; then
     ITERS=""
-  elif [[ $ct = *text/vnd.paste.sh-v3* ]]; then
+  elif [[ $ct = *text/vnd.paste.qaaq.cc-v3* ]]; then
     remove=remove_header
   fi
   tail -n +2 "${tmpfile}" | \

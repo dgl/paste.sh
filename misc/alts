@@ -1,5 +1,5 @@
 I'm always on the look out for novel ideas, so this is a list of some
-"competitors" or alternatives to paste.sh.
+"competitors" or alternatives to paste.qaaq.cc.
 
 
 Encrypted:
@@ -22,7 +22,7 @@ Encrypted:
       - https://mprimi.github.io/portable-secret/
       - https://www.privacyprotect.dev/
 
-(Note paste.sh isn't using AES-GCM but AES-CBC with a custom authentication, this is for compatibility with the OpenSSL command line tool which doesn't support GCM: https://github.com/openssl/openssl/issues/21142)
+(Note paste.qaaq.cc isn't using AES-GCM but AES-CBC with a custom authentication, this is for compatibility with the OpenSSL command line tool which doesn't support GCM: https://github.com/openssl/openssl/issues/21142)
 
 
 SSH based:
@@ -55,7 +55,7 @@ Syntax highlighting:
   - https://github.com/lojewalo/paste
     - e.g. https://paste.gg
   - Ghostbin (https://github.com/DHowett/spectre, now archived)
-    - I liked the minimal, full screen UI, very paste.sh style.
+    - I liked the minimal, full screen UI, very paste.qaaq.cc style.
     - e.g.: https://pst.innomi.net
   [many others...]
 
@@ -71,4 +71,4 @@ Classic:
   [many others...]
 
 
-[Send PRs to https://github.com/dgl/paste.sh/blob/master/misc/alts if you for some reason want to be in this list.]
+[Send PRs to https://github.com/dgl/paste.qaaq.cc/blob/master/misc/alts if you for some reason want to be in this list.]
