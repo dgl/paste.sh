@@ -1,0 +1,18 @@
+services:
+  pastesh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # if you use a reverse proxy container, you can remove the port mapping.
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    # if you do not use a reverse proxy container, you can remove the networks sections here, and below.
+    networks:
+      - apps
+
+networks:
+  apps:
+    external: true
