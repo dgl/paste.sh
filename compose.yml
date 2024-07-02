@@ -3,6 +3,9 @@
 # Optional, build (the image is published):
 # docker-compose build
 #
+# (One off to make the serverauth secret:)
+# docker-compose up serverauth
+#
 # docker-compose --profile update-misc up
 #
 # Then visit http://localhost:5000
