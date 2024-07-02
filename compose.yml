@@ -1,18 +1,69 @@
+# Docker compose file to run paste.sh locally.
+#
+# Optional, build (the image is published):
+# docker-compose build
+#
+# docker-compose --profile update-misc up
+#
+# Then visit http://localhost:5000
+
 services:
+  serverauth:
+    image: davidgl/pastesh
+    entrypoint: ["/bin/bash", "-c", "./generate-serverauth /work/serverauth"]
+    volumes:
+      - .:/work
+
   pastesh:
+    depends_on:
+      serverauth:
+        condition: service_completed_successfully
     build:
       context: .
       dockerfile: Dockerfile
+    image: davidgl/pastesh
     restart: unless-stopped
     # if you use a reverse proxy container, you can remove the port mapping.
     ports:
       - "5000:5000"
     volumes:
-      - .:/app
-    # if you do not use a reverse proxy container, you can remove the networks sections here, and below.
-    networks:
-      - apps
+      - paste-db:/db
+    secrets:
+      - serverauth
+    healthcheck:
+      test: curl localhost:5000
+      start_period: 10s
+      interval: 10s
+      timeout: 2s
+      retries: 3
+    # if use a reverse proxy container, you can uncomment the networks sections here, and below.
+    #networks:
+    #  - apps
 
-networks:
-  apps:
-    external: true
+  update-misc:
+    image: davidgl/pastesh
+    # Use docker-compose --profile update-misc up to run this, note this will
+    # use whatever is in davidgl/pastesh, so be careful to ensure you've built
+    # it locally (i.e. docker-compose build), else you'll get the paste.sh
+    # upstream misc data.
+    profiles:
+      - update-misc
+    restart: no
+    entrypoint: ["./update-misc"]
+    depends_on:
+      pastesh:
+        condition: service_healthy
+    network_mode: service:pastesh
+    secrets:
+      - serverauth
+
+#networks:
+#  apps:
+#    external: true
+
+volumes:
+  paste-db:
+
+secrets:
+  serverauth:
+    file: ./serverauth

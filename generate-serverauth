@@ -1,0 +1,6 @@
+#!/bin/bash
+out="${1:-serverauth}"
+if [[ ! -s "$out" ]]; then
+  openssl rand -base64 32 > "$out"
+fi
+[[ -s $out ]]
