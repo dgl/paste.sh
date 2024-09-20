@@ -90,10 +90,10 @@ encrypt() {
   (echo -n "${header}${header:+$'\n\n'}"; $cmd "$arg") \
     | 3<<<"$(writekey)" openssl enc -aes-256-cbc -md sha512 -pass fd:3 -iter 1 -base64 > "${file}"
 
-  # Get rid of the temp file once server supports HTTP/1.1 chunked uploads
-  # correctly.
+  et="\"$(etag <"${file}")\""
   (curl -sS -o /dev/fd/3 -H "X-Server-Key: ${serverkey}" \
     -H "Content-type: text/vnd.paste.sh-${VERSION}" \
+    -H "ETag: $et" \
     -T "${file}" "${HOST}/${id}" -b "$pasteauth" -w '%{http_code}' \
     | grep -q 200) 3>&1 || exit $?
 
@@ -116,6 +116,15 @@ decrypt() {
     -D "${headfile}" "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
   ct="$(grep -i '^content-type:' ${headfile} | cut -d':' -f2)"
+
+  et="$(grep -i '^etag:' ${headfile} | cut -d':' -f2 | tr -d '\015 ')"
+  if [[ -n "$et" ]]; then
+    expected_et="\"$(etag <"${tmpfile}")\""
+    if [[ "$et" != "$expected_et" ]]; then
+      die "Decryption failed (Invalid decryption key or damaged data)" 1
+    fi
+  fi
+
   remove=cat
   ITERS="-iter 1"
   if [[ $ct = *text/plain* ]]; then
@@ -143,6 +152,20 @@ fsize() {
   else
     stat -f "%z" "$file"
   fi
+}
+
+etag() {
+  # "61757468206b6579" is "auth key"
+  openssl base64 -d | hmac "$(writekey | hmac "61757468206b6579")" "-binary" | openssl base64 -A | sed 's/==$//'
+}
+
+# Implement HMAC on top of OpenSSL's digest command, as openssl's CLI support
+# for generating a HMAC needs the key on the command line.
+hmac() {
+  local key="$1"
+  local opts="$2"
+  key="$key" perl -e'print join("", map { chr hex } $ENV{key} =~ /(..)/g)^"\x36"x128; print join "", <>' | openssl sha512 -binary | \
+    key="$key" perl -e'print join("", map { chr hex } $ENV{key} =~ /(..)/g)^"\x5c"x128; print join "", <>' | openssl sha512 $opts
 }
 
 # Try to use memory if we can (Linux, probably) and the user hasn't set TMPDIR
