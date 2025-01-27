@@ -6,10 +6,13 @@ use v5.20;
 
 use constant LIB_IS_SYMLINK => -l "/lib";
 
+# This is the sign of the hacks this involves, LWP for example does a lot of
+# require on demand. Various other tools don't fully load things either. In
+# general things fail pretty obviously with module not found errors.
 my %additional_requires = (
   "LWP/UserAgent.pm" => [qw(HTTP::Headers::Util LWP::Authen::Basic HTTP::Request::Common HTML::HeadParser HTTP::Config File::Temp Encode Encode::Locale LWP::Protocol::http LWP::Protocol::https)],
   "URI.pm" => [qw(URI/_foreign.pm URI::data URI::file URI::http URI::https)],
-  "Plack/Runner.pm" => [qw(Getopt::Long Getopt::Long::Parser Plack::Loader Socket POSIX Carp Config_heavy.pl)],
+  "Plack/Runner.pm" => [qw(Getopt::Long Getopt::Long::Parser Plack::Loader Socket POSIX Carp)],
 );
 
 our $x;
