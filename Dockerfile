@@ -43,7 +43,7 @@ RUN busybox tar xvf /dist.tgz && \
   busybox mkdir /db && busybox chown 65532:65532 /db && \
   busybox rm /usr/src/app/dumpdeps.pm /dist.tgz /bin/busybox
 
-FROM gcr.io/distroless/static-debian${DEBIAN_VERSION}:debug-nonroot AS distroless-debug
+#FROM gcr.io/distroless/static-debian${DEBIAN_VERSION}:debug-nonroot AS distroless-debug
 FROM gcr.io/distroless/static-debian${DEBIAN_VERSION}:nonroot
 COPY --from=busybox /bin/busybox /bin/busybox
 SHELL ["/bin/busybox", "sh", "-c"]
@@ -52,7 +52,7 @@ RUN /bin/busybox rmdir /lib && /bin/busybox rm /bin/busybox
 USER nonroot
 COPY --link --from=build-tar / /
 # debug: docker run -it --entrypoint /busybox/sh ...
-COPY --link --from=distroless-debug /busybox /busybox
+#COPY --link --from=distroless-debug /busybox /busybox
 WORKDIR /usr/src/app
 SHELL ["/bin/sh", "-c"]
 EXPOSE 5000
