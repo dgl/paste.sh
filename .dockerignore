@@ -1,0 +1,4 @@
+.git/
+.github/
+.*.sw[op]
+.*.un~

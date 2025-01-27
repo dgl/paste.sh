@@ -12,8 +12,8 @@
 
 services:
   serverauth:
-    image: davidgl/pastesh
-    entrypoint: ["/bin/bash", "-c", "./generate-serverauth /work/serverauth"]
+    image: ubuntu:latest
+    entrypoint: ["/bin/bash", "-c", "cd /work; ./generate-serverauth /work/serverauth"]
     volumes:
       - .:/work
 
@@ -34,7 +34,7 @@ services:
     secrets:
       - serverauth
     healthcheck:
-      test: curl localhost:5000
+      test: ["CMD", "/usr/local/bin/perl", "-e", "exit !-s /run/secrets/serverauth"]
       start_period: 10s
       interval: 10s
       timeout: 2s
@@ -44,21 +44,20 @@ services:
     #  - apps
 
   update-misc:
-    image: davidgl/pastesh
-    # Use docker-compose --profile update-misc up to run this, note this will
-    # use whatever is in davidgl/pastesh, so be careful to ensure you've built
-    # it locally (i.e. docker-compose build), else you'll get the paste.sh
-    # upstream misc data.
+    image: ubuntu:latest
+    # Use docker-compose --profile update-misc up to run this.
     profiles:
       - update-misc
-    restart: no
-    entrypoint: ["./update-misc"]
+    restart: "no"
+    entrypoint: ["/bin/bash", "-c", "ln -s /work/misc; ln -s /run/secrets/serverauth; /work/update-misc"]
     depends_on:
       pastesh:
         condition: service_healthy
     network_mode: service:pastesh
     secrets:
       - serverauth
+    volumes:
+      - .:/work
 
 #networks:
 #  apps:
