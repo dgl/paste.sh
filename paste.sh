@@ -50,7 +50,7 @@ randbase64() {
 writekey() {
   # The full key includes some extras for more entropy. (OpenSSL adds a salt
   # too, so the ID isn't really needed, but won't hurt).
-  echo "${id}${serverkey}${clientkey}https://paste.sh"
+  echo -n "${id}${serverkey}${clientkey}https://paste.sh"
 }
 
 encrypt() {
@@ -161,11 +161,23 @@ etag() {
 
 # Implement HMAC on top of OpenSSL's digest command, as openssl's CLI support
 # for generating a HMAC needs the key on the command line.
+# These should be identical:
+#   echo -n ok | openssl dgst -sha512 -mac hmac -macopt hexkey:61757468206b6579
+#   echo -n ok | hmac "61757468206b6579"
+#
 hmac() {
   local key="$1"
   local opts="$2"
   key="$key" perl -e'print join("", map { chr hex } $ENV{key} =~ /(..)/g)^"\x36"x128; print join "", <>' | openssl sha512 -binary | \
-    key="$key" perl -e'print join("", map { chr hex } $ENV{key} =~ /(..)/g)^"\x5c"x128; print join "", <>' | openssl sha512 $opts
+    key="$key" perl -e'print join("", map { chr hex } $ENV{key} =~ /(..)/g)^"\x5c"x128; print join "", <>' | openssl sha512 $opts | hmactext "$opts"
+}
+
+hmactext() {
+  if [[ $1 = "" ]]; then
+    sed 's/^.* //'
+  else
+    cat
+  fi
 }
 
 # Try to use memory if we can (Linux, probably) and the user hasn't set TMPDIR
