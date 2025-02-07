@@ -26,7 +26,7 @@ COPY . .
 RUN <<EOF
 set -xeo pipefail
 # XXX: Config... is loaded on demand in some cases
-(PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c /usr/local/bin/twiggy; PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c $(pwd)/app.psgi; echo $(pwd); echo /usr/local/lib/perl5/site_perl; echo /usr/local/lib/perl5/5.40.1/x86_64-linux-gnu/Config*) | xargs tar --exclude-vcs cvfz /dist.tgz
+(PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c /usr/local/bin/twiggy; PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c $(pwd)/app.psgi; echo $(pwd); echo /usr/local/lib/perl5/site_perl; echo /usr/local/lib/perl5/5.40.1/x86_64-linux-gnu/Config*) | xargs tar cvfz /dist.tgz --exclude-vcs
 EOF
 
 # "uclibc" is statically linked.
