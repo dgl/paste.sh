@@ -26,7 +26,7 @@ COPY . .
 RUN <<EOF
 set -xeo pipefail
 # XXX: Config... is loaded on demand in some cases
-(PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c /usr/local/bin/twiggy; PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c $(pwd)/app.psgi; echo $(pwd); echo /usr/local/lib/perl5/site_perl; echo /usr/local/lib/perl5/5.40.1/x86_64-linux-gnu/Config*) | xargs tar cvfz /dist.tgz
+(PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c /usr/local/bin/twiggy; PERL5OPT="-I$(pwd) -Mdumpdeps" perl -c $(pwd)/app.psgi; echo $(pwd); echo /usr/local/lib/perl5/site_perl; echo /usr/local/lib/perl5/5.40.1/x86_64-linux-gnu/Config*) | xargs tar --exclude-vcs cvfz /dist.tgz
 EOF
 
 # "uclibc" is statically linked.
@@ -49,7 +49,8 @@ COPY --from=busybox /bin/busybox /bin/busybox
 SHELL ["/bin/busybox", "sh", "-c"]
 USER root
 RUN /bin/busybox rmdir /lib && /bin/busybox rm /bin/busybox
-USER nonroot
+# Needs to be numeric, so Kubernetes can tell it isn't UID 0 in disguise.
+USER 65532
 COPY --link --from=build-tar / /
 # debug: docker run -it --entrypoint /busybox/sh ...
 #COPY --link --from=distroless-debug /busybox /busybox
