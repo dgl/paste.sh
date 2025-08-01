@@ -112,7 +112,7 @@ decrypt() {
   tmpfile=$(mktemp -t $TMPTMPL)
   headfile=$(mktemp -t $TMPTMPL)
   trap 'rm -f "${tmpfile}" "${headfile}"' EXIT
-  curl -fsS -o "${tmpfile}" -H "Accept: text/plain, text/vnd.paste.sh-v2, text/vnd-paste.sh-v3" \
+  curl -fsS -o "${tmpfile}" -H "Accept: text/plain, text/vnd.paste.sh-v2, text/vnd.paste.sh-v3" \
     -D "${headfile}" "${url}.txt" || exit $?
   serverkey=$(head -n1 "${tmpfile}")
   ct="$(grep -i '^content-type:' ${headfile} | cut -d':' -f2)"

@@ -1,7 +1,7 @@
 <h2>Abuse report</h2>
 <form method="POST">
 <input type="hidden" name="site" value="paste.sh">
-<label>Full URL of the abusive content:<br><input type="url" name="url" value=""></label>
+<label>Full URL of the abusive content:<br><input type="url" name="url" value="" pattern="(?i)https?://(?:www\.)paste.sh.?/....+"></label>
 <br><br>
 <label>Your email address (optional):<br><input type="email" name="sender"></label>
 <br><br>
